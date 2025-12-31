@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GameAuto Player</string>
+    <string name="accessibility_service_description">自動化執行遊戲腳本，需要此權限以模擬觸控操作</string>
+</resources>
