@@ -77,7 +77,7 @@ class ScriptEngine(private val service: AutomationService) {
                 val params = step.optJSONObject("params")
                 if (params != null) {
                     val xPercent = params.optDouble("x_percent", 0.5)
-                    val yPercent = params.optDouble("y_percent", 0.5")
+                    val yPercent = params.optDouble("y_percent", 0.5)
                     
                     val metrics = service.resources.displayMetrics
                     val x = (metrics.widthPixels * xPercent).toFloat()
@@ -150,8 +150,8 @@ class ScriptEngine(private val service: AutomationService) {
                         result = when (varOp) {
                             "==" -> actualVal == varVal
                             "!=" -> actualVal != varVal
-                            ">" -> actualVal.toIntOrNull()?.let { it > varVal.toIntOrNull() ?: 0 } ?: false
-                            "<" -> actualVal.toIntOrNull()?.let { it < varVal.toIntOrNull() ?: 0 } ?: false
+                            ">" -> actualVal.toIntOrNull()?.let { it > (varVal?.toIntOrNull() ?: 0) } ?: false
+                            "<" -> actualVal.toIntOrNull()?.let { it < (varVal?.toIntOrNull() ?: 0) } ?: false
                             else -> false
                         }
                     }
@@ -178,7 +178,7 @@ class ScriptEngine(private val service: AutomationService) {
                         "set" -> variables[key] = value
                         "add" -> {
                             val current = variables[key]?.toIntOrNull() ?: 0
-                            variables[key] = (current + value.toIntOrNull() ?: 0).toString()
+                            variables[key] = (current + (value.toIntOrNull() ?: 0)).toString()
                         }
                         "sub" -> {
                             val current = variables[key]?.toIntOrNull() ?: 0
