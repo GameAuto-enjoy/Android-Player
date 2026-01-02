@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="GameAuto Player"
+        android:text="GameAutoEditor"
         android:textSize="28sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp" />
@@ -24,17 +24,27 @@
         android:layout_marginBottom="32dp" />
 
     <Button
+        android:id="@+id/activateButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⚠️ 輸入啟動碼"
+        android:textSize="16sp"
+        android:padding="16dp"
+        android:backgroundTint="@android:color/holo_orange_dark" />
+
+    <Button
         android:id="@+id/enableButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="開啟無障礙設定"
         android:textSize="16sp"
-        android:padding="16dp" />
+        android:padding="16dp"
+        android:layout_marginTop="16dp" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="使用說明:\n1. 點擊按鈕進入設定\n2. 找到 GameAuto Player\n3. 啟用服務\n4. 腳本將自動執行"
+        android:text="使用說明:\n1. 點擊「輸入啟動碼」\n2. 輸入購買時的 Purchase ID\n3. 開啟無障礙服務\n4. 腳本將自動執行"
         android:textSize="12sp"
         android:layout_marginTop="32dp"
         android:textAlignment="center"

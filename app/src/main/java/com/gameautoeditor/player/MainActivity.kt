@@ -15,13 +15,90 @@ class MainActivity : AppCompatActivity() {
         
         val statusText: TextView = findViewById(R.id.statusText)
         val enableButton: Button = findViewById(R.id.enableButton)
+        val activateButton: Button = findViewById(R.id.activateButton)
         
         enableButton.setOnClickListener {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
         }
         
+        // 啟動碼按鈕
+        activateButton.setOnClickListener {
+            showActivationDialog()
+        }
+        
         updateServiceStatus(statusText)
+        updateActivationStatus()
+    }
+    
+    private fun showActivationDialog() {
+        val input = android.widget.EditText(this)
+        input.hint = "請輸入購買時獲得的啟動碼"
+        input.inputType = android.text.InputType.TYPE_CLASS_TEXT
+        
+        // 如果已有啟動碼，顯示前幾個字元
+        val currentId = getSharedPreferences("GameAutoEditor", MODE_PRIVATE)
+            .getString("script_id", null)
+        if (currentId != null) {
+            input.setText(currentId)
+        }
+        
+        android.app.AlertDialog.Builder(this)
+            .setTitle("輸入啟動碼")
+            .setMessage("請輸入您購買時獲得的啟動碼（Purchase ID）")
+            .setView(input)
+            .setPositiveButton("確認") { _, _ ->
+                val scriptId = input.text.toString().trim()
+                if (scriptId.isNotEmpty()) {
+                    // 儲存到 SharedPreferences
+                    getSharedPreferences("GameAutoEditor", MODE_PRIVATE)
+                        .edit()
+                        .putString("script_id", scriptId)
+                        .apply()
+                    
+                    android.widget.Toast.makeText(
+                        this,
+                        "✅ 啟動碼已設定！\n請啟用無障礙服務以開始自動化",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    
+                    updateActivationStatus()
+                } else {
+                    android.widget.Toast.makeText(
+                        this,
+                        "❌ 請輸入有效的啟動碼",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .setNeutralButton("清除") { _, _ ->
+                getSharedPreferences("GameAutoEditor", MODE_PRIVATE)
+                    .edit()
+                    .remove("script_id")
+                    .apply()
+                android.widget.Toast.makeText(
+                    this,
+                    "已清除啟動碼",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                updateActivationStatus()
+            }
+            .show()
+    }
+    
+    private fun updateActivationStatus() {
+        val activateButton: Button = findViewById(R.id.activateButton)
+        val scriptId = getSharedPreferences("GameAutoEditor", MODE_PRIVATE)
+            .getString("script_id", null)
+        
+        if (scriptId != null) {
+            activateButton.text = "✅ 已啟動\n點擊重新設定"
+            activateButton.setBackgroundColor(getColor(android.R.color.holo_green_dark))
+        } else {
+            activateButton.text = "⚠️ 輸入啟動碼"
+            activateButton.setBackgroundColor(getColor(android.R.color.holo_orange_dark))
+        }
     }
     
     override fun onResume() {
