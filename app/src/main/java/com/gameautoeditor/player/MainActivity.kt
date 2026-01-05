@@ -48,6 +48,14 @@ class MainActivity : AppCompatActivity() {
 
         checkOverlayPermission()
         
+        try {
+            if (!org.opencv.android.OpenCVLoader.initDebug()) {
+                Log.e(TAG, "OpenCV init failed in Activity")
+            }
+        } catch (e: Exception) {
+             Log.e(TAG, "OpenCV init error", e)
+        }
+
         // Start Boot Process
         bootstrap()
     }
