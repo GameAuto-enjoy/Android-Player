@@ -29,6 +29,18 @@ class MainActivity : AppCompatActivity() {
         
         updateServiceStatus(statusText)
         updateActivationStatus()
+        checkOverlayPermission()
+    }
+
+    private fun checkOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, 1234)
+            android.widget.Toast.makeText(this, "請授權「顯示在上方」權限以顯示懸浮窗", android.widget.Toast.LENGTH_LONG).show()
+        }
     }
     
     private fun showActivationDialog() {

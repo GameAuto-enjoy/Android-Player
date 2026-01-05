@@ -13,6 +13,10 @@ class AutomationService : AccessibilityService() {
     private lateinit var sceneGraphEngine: SceneGraphEngine
     private lateinit var scriptEngine: ScriptEngine
     
+    private var windowManager: android.view.WindowManager? = null
+    private var floatingView: android.view.View? = null
+    private var isScriptRunning = false
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.i(TAG, "✅ Accessibility Service 已啟動")
@@ -20,10 +24,101 @@ class AutomationService : AccessibilityService() {
         scriptEngine = ScriptEngine(this)
         sceneGraphEngine = SceneGraphEngine(this)
         
-        // 從 assets 載入預先打包的腳本
-        loadAndExecuteScript()
+        // 初始化懸浮窗
+        initFloatingWindow()
+        
+        // 移除自動執行，改由懸浮窗控制
+        // loadAndExecuteScript() 
     }
     
+    private fun initFloatingWindow() {
+        try {
+            windowManager = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
+            
+            val layoutParams = android.view.WindowManager.LayoutParams(
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) 
+                    android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
+                else 
+                    android.view.WindowManager.LayoutParams.TYPE_PHONE,
+                android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                android.graphics.PixelFormat.TRANSLUCENT
+            )
+            
+            layoutParams.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+            layoutParams.x = 0
+            layoutParams.y = 100
+            
+            floatingView = android.view.LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null)
+            
+            // UI Controls
+            val btnPlayPause = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnPlayPause)
+            val btnStop = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnStop)
+            val iconDrag = floatingView?.findViewById<android.view.View>(R.id.iconDrag)
+            
+            btnPlayPause?.setOnClickListener {
+                if (isScriptRunning) {
+                    // Pause/Stop
+                    stopExecution()
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
+                    isScriptRunning = false
+                } else {
+                    // Start
+                    loadAndExecuteScript()
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
+                    isScriptRunning = true
+                }
+            }
+            
+            btnStop?.setOnClickListener {
+                 stopExecution()
+                 btnPlayPause?.setImageResource(android.R.drawable.ic_media_play)
+                 isScriptRunning = false
+                 showToast("已停止")
+            }
+            
+            // Drag Logic
+            iconDrag?.setOnTouchListener(object : android.view.View.OnTouchListener {
+                private var initialX = 0
+                private var initialY = 0
+                private var initialTouchX = 0f
+                private var initialTouchY = 0f
+
+                override fun onTouch(v: android.view.View?, event: android.view.MotionEvent): Boolean {
+                    when (event.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            initialX = layoutParams.x
+                            initialY = layoutParams.y
+                            initialTouchX = event.rawX
+                            initialTouchY = event.rawY
+                            return true
+                        }
+                        android.view.MotionEvent.ACTION_MOVE -> {
+                            layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
+                            layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
+                            windowManager?.updateViewLayout(floatingView, layoutParams)
+                            return true
+                        }
+                    }
+                    return false
+                }
+            })
+            
+            windowManager?.addView(floatingView, layoutParams)
+            Log.i(TAG, "悬浮窗已添加")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create floating window: ${e.message}")
+        }
+    }
+    
+    private fun stopExecution() {
+        scriptEngine.stop()
+        sceneGraphEngine.stop()
+        Log.i(TAG, "Execution stopped by user")
+    }
+
     private fun loadAndExecuteScript() {
         try {
             // 優先從網路載入腳本（支援預編譯模板）
@@ -41,6 +136,10 @@ class AutomationService : AccessibilityService() {
         } catch (e: Exception) {
             Log.e(TAG, "❌ 載入腳本失敗: ${e.message}", e)
             showToast("腳本載入失敗")
+             // Reset UI state if failed
+             val btnPlayPause = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnPlayPause)
+             btnPlayPause?.setImageResource(android.R.drawable.ic_media_play)
+             isScriptRunning = false
         }
     }
     
@@ -74,19 +173,16 @@ class AutomationService : AccessibilityService() {
                     // 在主線程執行腳本
                     android.os.Handler(mainLooper).post {
                         Log.i(TAG, "✅ 網路腳本載入成功")
-                        android.os.Handler(mainLooper).postDelayed({
-                            showToast("開始執行自動化腳本")
+                        showToast("腳本載入成功，開始執行") // Remove 3s delay for manual control
                             
-                            // 判斷是 Scene Graph 還是 舊版 Linear Script
-                            if (scriptJson.contains("\"nodes\"") && scriptJson.contains("\"edges\"")) {
-                                Log.i(TAG, "🔄 偵測到 Scene Graph 格式")
-                                sceneGraphEngine.start(scriptJson)
-                            } else {
-                                Log.i(TAG, "➡️ 偵測到線性腳本格式")
-                                scriptEngine.executeScript(scriptJson)
-                            }
-                            
-                        }, 3000)
+                        // 判斷是 Scene Graph 還是 舊版 Linear Script
+                        if (scriptJson.contains("\"nodes\"") && scriptJson.contains("\"edges\"")) {
+                            Log.i(TAG, "🔄 偵測到 Scene Graph 格式")
+                            sceneGraphEngine.start(scriptJson)
+                        } else {
+                            Log.i(TAG, "➡️ 偵測到線性腳本格式")
+                            scriptEngine.executeScript(scriptJson)
+                        }
                     }
                 } else {
                     Log.e(TAG, "❌ 網路載入失敗，HTTP $responseCode")
@@ -114,19 +210,20 @@ class AutomationService : AccessibilityService() {
             
             Log.i(TAG, "📄 Assets 腳本載入成功")
             
-            // 延遲 3 秒後自動執行
-            android.os.Handler(mainLooper).postDelayed({
-                showToast("開始執行自動化腳本")
-                if (scriptJson.contains("\"nodes\"")) {
-                    sceneGraphEngine.start(scriptJson)
-                } else {
-                    scriptEngine.executeScript(scriptJson)
-                }
-            }, 3000)
+            showToast("開始執行 (Assets)")
+            if (scriptJson.contains("\"nodes\"")) {
+                sceneGraphEngine.start(scriptJson)
+            } else {
+                scriptEngine.executeScript(scriptJson)
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 載入 assets 腳本失敗: ${e.message}", e)
             showToast("找不到腳本檔案")
+            // Reset UI
+            val btnPlayPause = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnPlayPause)
+            btnPlayPause?.setImageResource(android.R.drawable.ic_media_play)
+            isScriptRunning = false
         }
     }
     
@@ -136,15 +233,17 @@ class AutomationService : AccessibilityService() {
     
     override fun onInterrupt() {
         Log.w(TAG, "⚠️ Service interrupted")
-        scriptEngine.stop()
-        sceneGraphEngine.stop()
+        stopExecution()
     }
     
     override fun onDestroy() {
         super.onDestroy()
         Log.i(TAG, "🛑 Accessibility Service 已停止")
-        scriptEngine.stop()
-        sceneGraphEngine.stop()
+        stopExecution()
+        
+        if (floatingView != null) {
+            windowManager?.removeView(floatingView)
+        }
     }
     
     fun showToast(message: String) {
