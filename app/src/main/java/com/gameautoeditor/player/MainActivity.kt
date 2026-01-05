@@ -30,6 +30,83 @@ class MainActivity : AppCompatActivity() {
         updateServiceStatus(statusText)
         updateActivationStatus()
         checkOverlayPermission()
+        
+        // Setup new buttons
+        findViewById<android.widget.Button>(R.id.btnActivate).setOnClickListener {
+            // Open Accessibility Settings
+            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            startActivity(intent)
+        }
+        
+        findViewById<android.widget.Button>(R.id.btnInputScript).setOnClickListener {
+            showActivationDialog()
+        }
+        
+        findViewById<android.widget.Button>(R.id.btnUpdateScript).setOnClickListener {
+            performHotUpdate()
+        }
+    }
+    
+    private fun performHotUpdate() {
+        val btn = findViewById<android.widget.Button>(R.id.btnUpdateScript)
+        val originalText = btn.text
+        btn.text = "Checking..."
+        btn.isEnabled = false
+        
+        Thread {
+            try {
+                // Fetch list from Vercel API
+                val apiUrl = "https://game-auto-editor.vercel.app/api/list-scripts"
+                val connection = java.net.URL(apiUrl).openConnection() as java.net.HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 5000
+                
+                if (connection.responseCode == 200) {
+                    val responseJson = connection.inputStream.bufferedReader().readText()
+                    val json = org.json.JSONObject(responseJson)
+                    
+                    if (json.optBoolean("success")) {
+                        val scripts = json.optJSONArray("scripts")
+                        if (scripts != null && scripts.length() > 0) {
+                            // First one is the latest because API sorts it
+                            val latestScript = scripts.getJSONObject(0)
+                            val latestUrl = latestScript.getString("url")
+                            val name = latestScript.getString("pathname")
+                            val date = latestScript.getString("uploadedAt")
+                            
+                            // Save to Prefs
+                            val prefs = getSharedPreferences("GameAutoEditor", MODE_PRIVATE)
+                            prefs.edit().putString("script_id", latestUrl).apply()
+                            
+                            runOnUiThread {
+                                android.widget.Toast.makeText(this, "🔥 Updated to: $name", android.widget.Toast.LENGTH_LONG).show()
+                                findViewById<android.widget.TextView>(R.id.textCurrentScript).text = name
+                                btn.text = originalText
+                                btn.isEnabled = true
+                            }
+                        } else {
+                            runOnUiThread {
+                                android.widget.Toast.makeText(this, "No scripts found", android.widget.Toast.LENGTH_SHORT).show()
+                                btn.text = originalText
+                                btn.isEnabled = true
+                            }
+                        }
+                    } 
+                } else {
+                     runOnUiThread {
+                        android.widget.Toast.makeText(this, "Check failed: ${connection.responseCode}", android.widget.Toast.LENGTH_SHORT).show()
+                        btn.text = originalText
+                        btn.isEnabled = true
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    android.widget.Toast.makeText(this, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    btn.text = originalText
+                    btn.isEnabled = true
+                }
+            }
+        }.start()
     }
 
     private fun checkOverlayPermission() {
