@@ -33,8 +33,8 @@ class MainActivity : AppCompatActivity() {
     
     private fun showActivationDialog() {
         val input = android.widget.EditText(this)
-        input.hint = "請輸入購買時獲得的啟動碼"
-        input.inputType = android.text.InputType.TYPE_CLASS_TEXT
+        input.hint = "請輸入 ID 或 JSON URL"
+        input.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
         
         // 如果已有啟動碼，顯示前幾個字元
         val currentId = getSharedPreferences("GameAutoEditor", MODE_PRIVATE)
@@ -44,8 +44,8 @@ class MainActivity : AppCompatActivity() {
         }
         
         android.app.AlertDialog.Builder(this)
-            .setTitle("輸入啟動碼")
-            .setMessage("請輸入您購買時獲得的啟動碼（Purchase ID）")
+            .setTitle("輸入腳本來源")
+            .setMessage("請輸入啟動碼（Purchase ID）\n或是直接輸入 JSON 檔案的網址 (http/https)")
             .setView(input)
             .setPositiveButton("確認") { _, _ ->
                 val scriptId = input.text.toString().trim()
@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
                     
                     android.widget.Toast.makeText(
                         this,
-                        "✅ 啟動碼已設定！\n請啟用無障礙服務以開始自動化",
+                        "✅ 設定成功！\n請啟用無障礙服務以開始自動化",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                     
@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     android.widget.Toast.makeText(
                         this,
-                        "❌ 請輸入有效的啟動碼",
+                        "❌ 請輸入內容",
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                     .apply()
                 android.widget.Toast.makeText(
                     this,
-                    "已清除啟動碼",
+                    "已清除設定",
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
                 updateActivationStatus()

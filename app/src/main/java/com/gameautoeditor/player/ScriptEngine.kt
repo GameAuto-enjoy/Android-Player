@@ -7,6 +7,9 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import org.json.JSONObject
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.net.URL
 import org.json.JSONArray
 
 class ScriptEngine(private val service: AutomationService) {
@@ -15,6 +18,7 @@ class ScriptEngine(private val service: AutomationService) {
     private val handler = Handler(Looper.getMainLooper())
     private var isRunning = false
     private val variables = mutableMapOf<String, String>()
+    private val imageCache = mutableMapOf<String, Bitmap>()
     
     fun executeScript(scriptJson: String) {
         try {
@@ -202,6 +206,86 @@ class ScriptEngine(private val service: AutomationService) {
                     val next = step.optString("next", null)
                     executeStep(steps, findStepById(steps, next))
                 }, 1000)
+            }
+            
+
+            
+            "MATCH_IMAGE" -> {
+                val params = step.optJSONObject("params")
+                val imageUrl = params?.optString("image_url")
+                val threshold = params?.optDouble("threshold", 0.8) ?: 0.8
+                val action = params?.optString("action", "click") ?: "click"
+
+                if (imageUrl.isNullOrEmpty()) {
+                    Log.e(TAG, "❌ MATCH_IMAGE: No image URL provided")
+                    val branches = step.optJSONObject("branches")
+                    executeStep(steps, findStepById(steps, branches?.optString("fail")))
+                    return
+                }
+
+                service.captureScreen { screenBitmap ->
+                    if (screenBitmap == null) {
+                        Log.e(TAG, "❌ Screen capture failed")
+                        val branches = step.optJSONObject("branches")
+                        executeStep(steps, findStepById(steps, branches?.optString("fail")))
+                        return@captureScreen
+                    }
+
+                    Thread {
+                        try {
+                            var templateBitmap = imageCache[imageUrl]
+                            if (templateBitmap == null) {
+                                Log.d(TAG, "📥 Downloading template: $imageUrl")
+                                val url = URL(imageUrl)
+                                templateBitmap = BitmapFactory.decodeStream(url.openStream())
+                                if (templateBitmap != null) {
+                                    imageCache[imageUrl] = templateBitmap
+                                }
+                            }
+
+                            if (templateBitmap == null) {
+                                handler.post {
+                                    Log.e(TAG, "❌ Failed to load template image")
+                                    val branches = step.optJSONObject("branches")
+                                    executeStep(steps, findStepById(steps, branches?.optString("fail")))
+                                }
+                                return@Thread
+                            }
+
+                            Log.d(TAG, "🔍 Matching image...")
+                            val result = ImageMatcher.findTemplate(screenBitmap, templateBitmap, threshold)
+
+                            handler.post {
+                                if (result != null) {
+                                    Log.i(TAG, "✅ Image Found at: ${result.x}, ${result.y}")
+
+                                    if (action == "click") {
+                                        performClick(result.x.toFloat(), result.y.toFloat())
+                                    }
+
+                                    val delay = if (action == "click") 500L else 0L
+                                    handler.postDelayed({
+                                        val next = step.optString("next", null)
+                                        executeStep(steps, findStepById(steps, next))
+                                    }, delay)
+
+                                } else {
+                                    Log.i(TAG, "❌ Image Not Found")
+                                    val branches = step.optJSONObject("branches")
+                                    val failStep = branches?.optString("fail", null)
+                                    executeStep(steps, findStepById(steps, failStep))
+                                }
+                            }
+
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error in Match Image: ${e.message}")
+                            handler.post {
+                                val branches = step.optJSONObject("branches")
+                                executeStep(steps, findStepById(steps, branches?.optString("fail")))
+                            }
+                        }
+                    }.start()
+                }
             }
             
             "SYSTEM" -> {
