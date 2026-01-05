@@ -11,6 +11,7 @@ class AutomationService : AccessibilityService() {
     
     private val TAG = "AutomationService"
     private lateinit var sceneGraphEngine: SceneGraphEngine
+    private lateinit var scriptEngine: ScriptEngine
     
     override fun onServiceConnected() {
         super.onServiceConnected()
