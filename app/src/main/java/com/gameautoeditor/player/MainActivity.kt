@@ -70,22 +70,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLicenseDialog() {
-        val input = EditText(this)
-        input.hint = "Enter License Key (e.g. TEST-USER)"
+        val view = layoutInflater.inflate(R.layout.dialog_license_input, null)
+        val input = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.inputLicenseKey)
+        
+        // Pre-fill if exists (e.g. for editing)
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val savedKey = prefs.getString("license_key", "")
+        if (!savedKey.isNullOrEmpty()) {
+            input.setText(savedKey)
+        }
         
         AlertDialog.Builder(this)
-            .setTitle("Activation Required")
-            .setMessage("Please enter your license key to activate.")
-            .setView(input)
+            .setView(view)
             .setPositiveButton("Activate") { _, _ ->
                 val key = input.text.toString().trim()
                 if (key.isNotEmpty()) {
-                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                        .edit().putString("license_key", key).apply()
+                    prefs.edit().putString("license_key", key).apply()
+                    // If service not running, warn but allow? 
+                    // Bootstrap will handle check
                     bootstrap()
                 }
             }
-            .setCancelable(false)
+            .setCancelable(false) // Force input
             .show()
     }
 
