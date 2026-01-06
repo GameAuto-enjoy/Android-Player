@@ -28,8 +28,8 @@ class MainActivity : AppCompatActivity() {
 
     private val TAG = "MainActivity"
     private val PREFS_NAME = "GameAutoEditor"
-    // private val API_BOOT_URL = "https://game-auto-editor.vercel.app/api/client-boot"
-    private val API_BOOT_URL = "http://10.0.2.2:5001/api/client-boot" // Local Dev
+    private val API_BOOT_URL = "https://game-auto-editor.vercel.app/api/client-boot"
+    // private val API_BOOT_URL = "http://10.0.2.2:5001/api/client-boot" // Local Dev
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
