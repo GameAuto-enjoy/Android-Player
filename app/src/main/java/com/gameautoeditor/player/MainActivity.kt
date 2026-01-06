@@ -47,6 +47,13 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // Show Controls Button Logic
+        findViewById<Button>(R.id.btnShowControls).setOnClickListener {
+            val intent = Intent(this, AutomationService::class.java)
+            intent.action = "SHOW_OVERLAY"
+            startService(intent)
+        }
+
         checkOverlayPermission()
         
         try {
@@ -245,18 +252,21 @@ class MainActivity : AppCompatActivity() {
     private fun updateServiceStatus() {
         val serviceStatus = isAccessibilityServiceEnabled(AutomationService::class.java)
         val statusText = findViewById<TextView>(R.id.textServiceStatus)
-        val btn = findViewById<Button>(R.id.btnActivate)
+        val btnActivate = findViewById<Button>(R.id.btnActivate)
+        val btnShowControls = findViewById<Button>(R.id.btnShowControls)
 
         if (serviceStatus) {
             statusText.text = "Service Running 🟢"
             statusText.setTextColor(0xFF4CAF50.toInt())
-            btn.isEnabled = false
-            btn.text = "Service Active"
+            btnActivate.isEnabled = false
+            btnActivate.text = "Service Active"
+            btnShowControls.visibility = android.view.View.VISIBLE
         } else {
             statusText.text = "Service Inactive 🔴"
             statusText.setTextColor(0xFFF44336.toInt())
-            btn.isEnabled = true
-            btn.text = "Enable Service"
+            btnActivate.isEnabled = true
+            btnActivate.text = "Enable Service"
+            btnShowControls.visibility = android.view.View.GONE
         }
     }
 

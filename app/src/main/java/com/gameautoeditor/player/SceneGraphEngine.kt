@@ -90,8 +90,11 @@ class SceneGraphEngine(private val service: AutomationService) {
                     if (action != null) {
                         // 4. Perform Action
                         performAction(action)
-                        // Wait for transition
-                        Thread.sleep(2000) 
+                        
+                        // Wait for transition (Dynamic)
+                        val waitTime = action.region.optLong("wait_after", 2000L)
+                        Log.d(TAG, "⏳ Waiting ${waitTime}ms...")
+                        Thread.sleep(waitTime) 
                     } else {
                         Log.d(TAG, "No edges/regions to traverse from here or condition not met.")
                         Thread.sleep(1000)
@@ -227,32 +230,74 @@ class SceneGraphEngine(private val service: AutomationService) {
 
     private fun performAction(action: TransitionAction) {
         val r = action.region
+        val act = r.optJSONObject("action")
+        val type = act?.optString("type") ?: "CLICK"
+        val label = r.optString("label", "Action")
+        val params = act?.optJSONObject("params")
+        
+        // Show Prompt
+        service.showToast("▶ $label")
+        
+        // 1. Calculate Base Coordinates (Center of Region)
         val xPercent = r.getDouble("x")
         val yPercent = r.getDouble("y")
         val wPercent = r.getDouble("w")
         val hPercent = r.getDouble("h")
-        
-        // Calculate Center
-        val centerXPercent = xPercent + (wPercent / 2)
-        val centerYPercent = yPercent + (hPercent / 2)
-        
-        // Convert to Pixels
+
         val metrics = service.resources.displayMetrics
-        val realX = (metrics.widthPixels * centerXPercent / 100).toFloat()
-        val realY = (metrics.heightPixels * centerYPercent / 100).toFloat()
-        
-        Log.i(TAG, "👆 Clicking at ($realX, $realY) [${centerXPercent}%, ${centerYPercent}%]")
-        
-        // Dispatch Gesture (Must run on main thread or via service context)
-        // Since we are in worker thread, verify if dispatchGesture is thread-safe. 
-        // It generally is, but let's be safe.
+        val centerX = (metrics.widthPixels * (xPercent + wPercent / 2) / 100).toFloat()
+        val centerY = (metrics.heightPixels * (yPercent + hPercent / 2) / 100).toFloat()
+
+        Log.i(TAG, "⚡ Performing $type at ($centerX, $centerY)")
+
         handler.post {
             val path = Path()
-            path.moveTo(realX, realY)
-            val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
-                .build()
-            service.dispatchGesture(gesture, null, null)
+            path.moveTo(centerX, centerY)
+            
+            val builder = GestureDescription.Builder()
+            
+            when (type) {
+                "CLICK" -> {
+                    // Standard Click (Tap)
+                    builder.addStroke(GestureDescription.StrokeDescription(path, 0, 50))
+                }
+                "LONG_PRESS" -> {
+                    // Long Press
+                    val duration = params?.optLong("duration") ?: 1000L
+                    builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+                }
+                "SWIPE" -> {
+                    // Swipe
+                    val direction = params?.optString("direction") ?: "UP"
+                    val duration = params?.optLong("duration") ?: 300L
+                    val distance = 300f // Pixels, could be configurable
+                    
+                    var endX = centerX
+                    var endY = centerY
+                    
+                    when (direction) {
+                        "UP" -> endY -= distance
+                        "DOWN" -> endY += distance
+                        "LEFT" -> endX -= distance
+                        "RIGHT" -> endX += distance
+                    }
+                    
+                    path.lineTo(endX, endY)
+                    builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+                }
+                "WAIT" -> {
+                    // No gesture, just wait (logic handled in loop delay)
+                    Log.i(TAG, "⏳ Action is WAIT only")
+                    return@post
+                }
+            }
+            
+            try {
+                service.dispatchGesture(builder.build(), null, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Gesture Dispatch Failed", e)
+            }
         }
     }
 }
+```

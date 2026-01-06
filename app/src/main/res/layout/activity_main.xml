@@ -172,6 +172,16 @@
                 android:backgroundTint="#2196F3"
                 android:layout_marginTop="12dp"
                 android:textColor="#FFFFFF"/>
+
+            <Button
+                android:id="@+id/btnShowControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Show Floating Controls"
+                android:visibility="gone"
+                android:backgroundTint="#FF9800"
+                android:layout_marginTop="8dp"
+                android:textColor="#FFFFFF"/>
                 
         </LinearLayout>
     </androidx.cardview.widget.CardView>

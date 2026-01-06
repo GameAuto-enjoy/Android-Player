@@ -31,6 +31,25 @@ class AutomationService : AccessibilityService() {
         // loadAndExecuteScript() 
     }
     
+    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "SHOW_OVERLAY") {
+            Log.i(TAG, "Received SHOW_OVERLAY command")
+            if (floatingView == null) {
+                initFloatingWindow()
+            } else {
+                try {
+                    // Ensure visible
+                    floatingView?.visibility = android.view.View.VISIBLE
+                    showToast("Controls visible")
+                } catch (e: Exception) {
+                    // Try re-init if something broke
+                    initFloatingWindow()
+                }
+            }
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     private fun initFloatingWindow() {
         try {
             windowManager = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
