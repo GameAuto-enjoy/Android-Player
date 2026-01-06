@@ -3,187 +3,199 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8F9FA"
+    android:background="#E3F2FD"
     android:padding="24dp">
 
-    <!-- Header -->
-    <TextView
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="🎮 Auto Executor"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="#333333"
-        android:gravity="center"
-        android:layout_marginBottom="8dp"/>
-
-    <TextView
-        android:id="@+id/textVersion"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="v1.0.0"
-        android:textSize="12sp"
-        android:gravity="center"
-        android:textColor="#999999"
-        android:layout_marginBottom="32dp"/>
-
-    <!-- License Card -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="#FFFFFF"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+        android:layout_height="match_parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:orientation="vertical">
 
+            <!-- Header -->
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="License Info"
-                android:textSize="12sp"
-                android:textAllCaps="true"
-                android:textColor="#999999"
-                android:letterSpacing="0.1"/>
-
-            <TextView
-                android:id="@+id/textLicenseStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Checking..."
-                android:textSize="18sp"
+                android:text="🎮 Auto Executor"
+                android:textSize="28sp"
                 android:textStyle="bold"
                 android:textColor="#333333"
-                android:layout_marginTop="4dp"/>
+                android:gravity="center"
+                android:layout_marginBottom="8dp"/>
 
             <TextView
-                android:id="@+id/textExpiry"
-                android:layout_width="wrap_content"
+                android:id="@+id/textVersion"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textSize="14sp"
-                android:textColor="#666666"
-                android:layout_marginTop="4dp"/>
-                
-            <Button
-                android:id="@+id/btnChangeLicense"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:text="Change Key"
-                android:backgroundTint="#F5F5F5"
-                android:textColor="#666666"
-                android:layout_marginTop="12dp"
-                android:textSize="12sp"/>
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- Script Info Card -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="#FFFFFF"
-        android:layout_marginBottom="16dp"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Assigned Task"
+                android:text="v1.0.1"
                 android:textSize="12sp"
-                android:textAllCaps="true"
-                android:textColor="#999999"
-                android:letterSpacing="0.1"/>
+                android:gravity="center"
+                android:textColor="#666666"
+                android:layout_marginBottom="24dp"/>
 
-            <TextView
-                android:id="@+id/textCurrentScript"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Waiting for server..."
-                android:textSize="16sp"
-                android:textColor="#333333"
-                android:ellipsize="middle"
-                android:singleLine="true"
-                android:layout_marginTop="4dp"/>
-                
-            <ProgressBar
-                android:id="@+id/progressBar"
+            <!-- Status Card (Moved to Top) -->
+             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
-                android:layout_height="4dp"
-                android:layout_marginTop="12dp"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:indeterminate="true"/>
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:layout_marginBottom="16dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+                    
+                     <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="System Status"
+                        android:textSize="12sp"
+                        android:textAllCaps="true"
+                        android:textColor="#999999"
+                        android:letterSpacing="0.1"/>
+
+                    <TextView
+                        android:id="@+id/textServiceStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Service Inactive"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#F44336"
+                        android:layout_marginTop="4dp"/>
+
+                    <Button
+                        android:id="@+id/btnActivate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Enable Service"
+                        android:backgroundTint="#2196F3"
+                        android:layout_marginTop="12dp"
+                        android:textColor="#FFFFFF"/>
+
+                    <Button
+                        android:id="@+id/btnShowControls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Show Floating Controls"
+                        android:visibility="gone"
+                        android:backgroundTint="#FF9800"
+                        android:layout_marginTop="8dp"
+                        android:textColor="#FFFFFF"/>
+                        
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- License Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="#FFFFFF"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="License Info"
+                        android:textSize="12sp"
+                        android:textAllCaps="true"
+                        android:textColor="#999999"
+                        android:letterSpacing="0.1"/>
+
+                    <TextView
+                        android:id="@+id/textLicenseStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Checking..."
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#333333"
+                        android:layout_marginTop="4dp"/>
+
+                    <TextView
+                        android:id="@+id/textExpiry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textColor="#666666"
+                        android:layout_marginTop="4dp"/>
+                        
+                    <Button
+                        android:id="@+id/btnChangeLicense"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="Change Key"
+                        android:backgroundTint="#F5F5F5"
+                        android:textColor="#666666"
+                        android:layout_marginTop="12dp"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Script Info Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:layout_marginBottom="16dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Assigned Task"
+                        android:textSize="12sp"
+                        android:textAllCaps="true"
+                        android:textColor="#999999"
+                        android:letterSpacing="0.1"/>
+
+                    <TextView
+                        android:id="@+id/textCurrentScript"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Waiting for server..."
+                        android:textSize="16sp"
+                        android:textColor="#333333"
+                        android:ellipsize="middle"
+                        android:singleLine="true"
+                        android:layout_marginTop="4dp"/>
+                        
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="4dp"
+                        android:layout_marginTop="12dp"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:indeterminate="true"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
-    
-    <!-- Status Card -->
-     <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="#FFFFFF"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-            
-             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="System Status"
-                android:textSize="12sp"
-                android:textAllCaps="true"
-                android:textColor="#999999"
-                android:letterSpacing="0.1"/>
-
-            <TextView
-                android:id="@+id/textServiceStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Service Inactive"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="#F44336"
-                android:layout_marginTop="4dp"/>
-
-            <Button
-                android:id="@+id/btnActivate"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Enable Service"
-                android:backgroundTint="#2196F3"
-                android:layout_marginTop="12dp"
-                android:textColor="#FFFFFF"/>
-
-            <Button
-                android:id="@+id/btnShowControls"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Show Floating Controls"
-                android:visibility="gone"
-                android:backgroundTint="#FF9800"
-                android:layout_marginTop="8dp"
-                android:textColor="#FFFFFF"/>
-                
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+    </ScrollView>
 
 </LinearLayout>
