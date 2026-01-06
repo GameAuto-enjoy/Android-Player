@@ -43,12 +43,7 @@ class AutomationService : AccessibilityService() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        try {
-            unregisterReceiver(overlayReceiver)
-        } catch (e: Exception) {}
-    }
+
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -277,6 +272,11 @@ class AutomationService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         Log.i(TAG, "🛑 Accessibility Service 已停止")
+        
+        try {
+            unregisterReceiver(overlayReceiver)
+        } catch (e: Exception) {}
+
         stopExecution()
         
         if (floatingView != null) {
