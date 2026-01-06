@@ -19,7 +19,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="🎮 Auto Executor"
+                android:text="🎮 Auto Executor v1.1"
                 android:textSize="28sp"
                 android:textStyle="bold"
                 android:textColor="#333333"
