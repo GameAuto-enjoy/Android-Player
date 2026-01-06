@@ -67,19 +67,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bootstrap() {
-        // --- DEV BYPASS START ---
-        if (BuildConfig.DEBUG) {
-            runOnUiThread {
-                setStatus("Active (Dev Mode)", false)
-                findViewById<TextView>(R.id.textCurrentScript).text = "Task: Dev Script"
-                findViewById<TextView>(R.id.textLicenseStatus).text = "Active ✅ (Dev)"
-                findViewById<TextView>(R.id.textLicenseStatus).setTextColor(0xFF4CAF50.toInt())
-                findViewById<TextView>(R.id.textExpiry).text = "Valid until: Forever"
-            }
-            return
-        }
-        // --- DEV BYPASS END ---
-
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val licenseKey = prefs.getString("license_key", null)
 
