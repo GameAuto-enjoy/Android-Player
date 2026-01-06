@@ -49,9 +49,9 @@ class MainActivity : AppCompatActivity() {
 
         // Show Controls Button Logic
         findViewById<Button>(R.id.btnShowControls).setOnClickListener {
-            val intent = Intent(this, AutomationService::class.java)
-            intent.action = "SHOW_OVERLAY"
-            startService(intent)
+            val intent = Intent("com.gameautoeditor.SHOW_OVERLAY")
+            sendBroadcast(intent)
+            Toast.makeText(this, "Sending command...", Toast.LENGTH_SHORT).show()
         }
 
         checkOverlayPermission()

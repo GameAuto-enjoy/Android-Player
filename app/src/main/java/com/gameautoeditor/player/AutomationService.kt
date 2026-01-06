@@ -17,37 +17,56 @@ class AutomationService : AccessibilityService() {
     private var floatingView: android.view.View? = null
     private var isScriptRunning = false
 
+    private val overlayReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (intent?.action == "com.gameautoeditor.SHOW_OVERLAY") {
+                Log.i(TAG, "📢 Broadcast Received: SHOW_OVERLAY")
+                
+                if (floatingView == null) {
+                    initFloatingWindow()
+                } else {
+                    try {
+                        // Check if attached
+                        if (floatingView?.windowToken == null) {
+                             // Not attached, try adding? Or re-init
+                             initFloatingWindow()
+                        } else {
+                            floatingView?.visibility = android.view.View.VISIBLE
+                            showToast("Controls Refreshed")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error showing overlay", e)
+                        initFloatingWindow()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(overlayReceiver)
+        } catch (e: Exception) {}
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.i(TAG, "✅ Accessibility Service 已啟動")
+
+        // Register Receiver
+        val filter = android.content.IntentFilter("com.gameautoeditor.SHOW_OVERLAY")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            registerReceiver(overlayReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(overlayReceiver, filter)
+        }
         
         scriptEngine = ScriptEngine(this)
         sceneGraphEngine = SceneGraphEngine(this)
         
         // 初始化懸浮窗
         initFloatingWindow()
-        
-        // 移除自動執行，改由懸浮窗控制
-        // loadAndExecuteScript() 
-    }
-    
-    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "SHOW_OVERLAY") {
-            Log.i(TAG, "Received SHOW_OVERLAY command")
-            if (floatingView == null) {
-                initFloatingWindow()
-            } else {
-                try {
-                    // Ensure visible
-                    floatingView?.visibility = android.view.View.VISIBLE
-                    showToast("Controls visible")
-                } catch (e: Exception) {
-                    // Try re-init if something broke
-                    initFloatingWindow()
-                }
-            }
-        }
-        return super.onStartCommand(intent, flags, startId)
     }
 
     private fun initFloatingWindow() {
