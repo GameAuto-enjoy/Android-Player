@@ -78,7 +78,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLicenseDialog() {
-        val view = layoutInflater.inflate(R.layout.dialog_license_input, null)
+        // Explicitly wrap context to ensure Material Theme is present for LayoutInflater
+        val materialContext = android.view.ContextThemeWrapper(this, R.style.Theme_GameAutoPlayer)
+        val inflater = android.view.LayoutInflater.from(materialContext)
+        val view = inflater.inflate(R.layout.dialog_license_input, null)
         val input = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.inputLicenseKey)
         
         // Pre-fill if exists (e.g. for editing)
@@ -88,7 +91,7 @@ class MainActivity : AppCompatActivity() {
             input.setText(savedKey)
         }
         
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(materialContext)
             .setView(view)
             .setPositiveButton("Activate") { _, _ ->
                 val key = input.text.toString().trim()
