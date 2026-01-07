@@ -89,8 +89,23 @@ class ScriptEngine(private val service: AutomationService) {
             Log.i(TAG, "🚀 Starting Graph from node: $startNodeId")
             processGraphNode(startNodeId)
         } else {
-            Log.e(TAG, "❌ No START node found in graph")
-            service.showToast("No Start Node Found")
+            // Fallback: Check for data.isRoot
+            for (id in nodesMap.keys) {
+                val node = nodesMap[id]!!
+                val data = node.optJSONObject("data")
+                if (data != null && data.optBoolean("isRoot")) {
+                    startNodeId = id
+                    break
+                }
+            }
+
+            if (startNodeId != null) {
+                Log.i(TAG, "🚀 Starting Scene Graph from root: $startNodeId")
+                processGraphNode(startNodeId)
+            } else {
+                Log.e(TAG, "❌ No START node found in graph")
+                service.showToast("No Start Node Found")
+            }
         }
     }
     
@@ -110,12 +125,46 @@ class ScriptEngine(private val service: AutomationService) {
         Log.i(TAG, "▶️ Executing [$type]: $label")
         service.showToast("▶ $label")
         
-        // Execute Action based on Type
-        // Standardize params: data.x, data.y, data.time, etc
-        
         when (type) {
-            "start" -> {
+            "start", "root" -> {
                 moveToNextNode(nodeId, 500)
+            }
+            "scene" -> {
+                // Scene Node Logic:
+                // 1. Find next node
+                val nextId = findNextNodeId(nodeId)
+                if (nextId != null) {
+                    // 2. Find which region points to nextId
+                    val regions = data.optJSONArray("regions")
+                    var clicked = false
+                    if (regions != null) {
+                        for (i in 0 until regions.length()) {
+                            val r = regions.getJSONObject(i)
+                            if (r.optString("target") == nextId) {
+                                // Found the region! Click it.
+                                val x = r.optDouble("x", 0.0)
+                                val y = r.optDouble("y", 0.0)
+                                val w = r.optDouble("w", 0.0)
+                                val h = r.optDouble("h", 0.0)
+                                val centerX = x + w / 2
+                                val centerY = y + h / 2
+                                
+                                Log.i(TAG, "🎯 Scene Transition: Click Region ($centerX%, $centerY%)")
+                                performClickPercent(centerX, centerY)
+                                clicked = true
+                                break
+                            }
+                        }
+                    }
+                    if (!clicked) {
+                        Log.w(TAG, "⚠️ No region found linking to $nextId, just waiting...")
+                    }
+                    moveToNextNode(nodeId, 2000) // Wait for scene transition
+                } else {
+                    Log.i(TAG, "🏁 End of Scene Path")
+                    service.showToast("Scripts Complete")
+                    isRunning = false
+                }
             }
             "click" -> {
                 val xPercent = data.optDouble("x", 50.0)
@@ -128,9 +177,6 @@ class ScriptEngine(private val service: AutomationService) {
                 moveToNextNode(nodeId, time)
             }
             "loop" -> {
-                // Simplified Loop: assume count is passed in data
-                // Real implementation needs to handle iteration state
-                // For this demo, we just pass through
                 moveToNextNode(nodeId, 500)
             }
             else -> {
@@ -155,8 +201,6 @@ class ScriptEngine(private val service: AutomationService) {
     }
     
     private fun findNextNodeId(currentId: String): String? {
-        // Find edge where source == currentId
-        // Future: Handle multiple edges for branching (check condition)
         for (edge in edgesList) {
             if (edge.getString("source") == currentId) {
                 return edge.getString("target")
