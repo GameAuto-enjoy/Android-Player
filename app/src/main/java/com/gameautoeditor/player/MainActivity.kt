@@ -238,14 +238,14 @@ class MainActivity : AppCompatActivity() {
                         val progress = (total * 100 / fileLength).toInt()
                         runOnUiThread {
                             progressDialog.progress = progress
-                            progressDialog.message = "Downloading: $progress%"
+                            progressDialog.setMessage("Downloading: $progress%")
                         }
                     } else {
                         // Indeterminate fallback
                          runOnUiThread {
                              if (!progressDialog.isIndeterminate) {
                                  progressDialog.isIndeterminate = true
-                                 progressDialog.message = "Downloading..."
+                                 progressDialog.setMessage("Downloading...")
                              }
                          }
                     }
