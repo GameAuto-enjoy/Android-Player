@@ -201,7 +201,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun downloadAndInstallApk(urlStr: String) {
-        setStatus("Downloading Update...", true)
+        // Setup Progress Dialog
+        val progressDialog = android.app.ProgressDialog(this)
+        progressDialog.setTitle("Downloading Update")
+        progressDialog.setMessage("Please wait...")
+        progressDialog.isIndeterminate = false
+        progressDialog.max = 100
+        progressDialog.setProgressStyle(android.app.ProgressDialog.STYLE_HORIZONTAL)
+        progressDialog.setCancelable(false)
+        progressDialog.show()
         
         thread {
             try {
@@ -209,22 +217,56 @@ class MainActivity : AppCompatActivity() {
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connect()
 
+                val fileLength = connection.contentLength
+                val hasLength = fileLength > 0
+
                 val file = File(getExternalFilesDir(null), "update.apk")
                 if (file.exists()) file.delete()
 
                 val input = connection.inputStream
                 val output = file.outputStream()
                 
-                input.copyTo(output)
+                val data = ByteArray(4096)
+                var total: Long = 0
+                var count: Int
+                
+                while (input.read(data).also { count = it } != -1) {
+                    total += count.toLong()
+                    output.write(data, 0, count)
+                    
+                    if (hasLength) {
+                        val progress = (total * 100 / fileLength).toInt()
+                        runOnUiThread {
+                            progressDialog.progress = progress
+                            progressDialog.message = "Downloading: $progress%"
+                        }
+                    } else {
+                        // Indeterminate fallback
+                         runOnUiThread {
+                             if (!progressDialog.isIndeterminate) {
+                                 progressDialog.isIndeterminate = true
+                                 progressDialog.message = "Downloading..."
+                             }
+                         }
+                    }
+                }
+                
                 output.close()
                 input.close()
 
                 runOnUiThread {
+                    progressDialog.dismiss()
                     installApk(file)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
+                    progressDialog.dismiss()
                     setStatus("Update Failed: ${e.message}", false)
+                     AlertDialog.Builder(this)
+                        .setTitle("Update Failed")
+                        .setMessage(e.message)
+                        .setPositiveButton("OK", null)
+                        .show()
                 }
             }
         }
