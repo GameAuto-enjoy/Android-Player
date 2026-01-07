@@ -24,6 +24,8 @@ class ScriptEngine(private val service: AutomationService) {
     private val nodesMap = mutableMapOf<String, JSONObject>()
     private val edgesList = mutableListOf<JSONObject>()
     
+    private var sceneGraphEngine: SceneGraphEngine? = null
+    
     fun executeScript(scriptJson: String) {
         try {
             val root = JSONObject(scriptJson)
@@ -32,8 +34,26 @@ class ScriptEngine(private val service: AutomationService) {
             
             // Check Format: Graph (ReactFlow) vs Linear
             if (root.has("nodes") && root.has("edges")) {
-                Log.i(TAG, "🔄 Mode: Graph Execution (Unified Schema)")
-                executeGraph(root)
+                // Heuristic: Check for 'scene' nodes to determine engine
+                val nodes = root.getJSONArray("nodes")
+                var isSceneGraph = false
+                for (i in 0 until nodes.length()) {
+                    if (nodes.getJSONObject(i).optString("type") == "scene") {
+                        isSceneGraph = true
+                        break
+                    }
+                }
+
+                if (isSceneGraph) {
+                    Log.i(TAG, "🔄 Mode: Smart Scene Graph Execution (Delegating to SceneGraphEngine)")
+                    if (sceneGraphEngine == null) {
+                        sceneGraphEngine = SceneGraphEngine(service)
+                    }
+                    sceneGraphEngine?.start(scriptJson)
+                } else {
+                    Log.i(TAG, "➡️ Mode: Standard Flowchart Execution")
+                    executeGraph(root)
+                }
             } else if (root.has("steps")) {
                 Log.i(TAG, "➡️ Mode: Linear Execution (Legacy)")
                 executeLinear(root.getJSONArray("steps"))
@@ -52,6 +72,7 @@ class ScriptEngine(private val service: AutomationService) {
     fun stop() {
         isRunning = false
         handler.removeCallbacksAndMessages(null)
+        sceneGraphEngine?.stop()
         Log.i(TAG, "⏹️ Script Stopped")
     }
 
