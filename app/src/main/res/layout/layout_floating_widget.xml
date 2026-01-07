@@ -19,8 +19,10 @@
             android:id="@+id/btnClose"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@drawable/ic_control_close"
             android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
             android:contentDescription="Close Menu"/>
 
         <!-- Play/Pause Button -->
@@ -28,9 +30,10 @@
             android:id="@+id/btnPlayPause"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_media_play"
+            android:src="@drawable/ic_control_play"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:tint="#4CAF50"
+            android:scaleType="fitCenter"
+            android:padding="4dp"
             android:contentDescription="Play/Pause"
             android:layout_marginStart="8dp"/>
 
@@ -39,9 +42,10 @@
             android:id="@+id/btnStop"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_media_pause"
+            android:src="@drawable/ic_control_stop"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:tint="#F44336"
+            android:scaleType="fitCenter"
+            android:padding="4dp"
             android:contentDescription="Stop"
             android:layout_marginStart="8dp"/>
             
@@ -50,9 +54,10 @@
             android:id="@+id/btnSettings"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_preferences"
+            android:src="@drawable/ic_control_settings"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:tint="#2196F3"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
             android:contentDescription="Settings"
             android:layout_marginStart="8dp"/>
     </LinearLayout>
@@ -70,11 +75,11 @@
             android:id="@+id/floating_icon"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:src="@android:mipmap/sym_def_app_icon"
-            android:background="@android:drawable/btn_default_small"
+            android:src="@drawable/ic_floating_logo"
+            android:background="@drawable/bg_floating_circle"
             android:contentDescription="Floating Icon"
-            android:scaleType="centerInside"
-            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:padding="2dp"
             android:elevation="4dp"/>
 
         <TextView
