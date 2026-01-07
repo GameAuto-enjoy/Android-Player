@@ -276,7 +276,12 @@ class AutomationService : AccessibilityService() {
                         Log.i(TAG, "✅ 網路腳本載入成功")
                         showToast("腳本載入成功，開始執行") // Remove 3s delay for manual control
                             
-                        // 判斷是 Scene Graph 還是 舊版 Linear Script
+                        // Unified Engine Routing: ScriptEngine now handles BOTH Graph and Linear formats.
+                        // We use ScriptEngine by default to avoid the forced-screenshot loop of the old SceneGraphEngine.
+                        Log.i(TAG, "🚀 Pass to Unified ScriptEngine")
+                        scriptEngine.executeScript(scriptJson)
+                        
+                        /* Legacy Routing (Disabled for stability)
                         if (scriptJson.contains("\"nodes\"") && scriptJson.contains("\"edges\"")) {
                             Log.i(TAG, "🔄 偵測到 Scene Graph 格式")
                             sceneGraphEngine.start(scriptJson)
@@ -284,6 +289,7 @@ class AutomationService : AccessibilityService() {
                             Log.i(TAG, "➡️ 偵測到線性腳本格式")
                             scriptEngine.executeScript(scriptJson)
                         }
+                        */
                     }
                 } else {
                     Log.e(TAG, "❌ 網路載入失敗，HTTP $responseCode")
@@ -312,11 +318,15 @@ class AutomationService : AccessibilityService() {
             Log.i(TAG, "📄 Assets 腳本載入成功")
             
             showToast("開始執行 (Assets)")
+            // Unified Routing
+            scriptEngine.executeScript(scriptJson)
+            /*
             if (scriptJson.contains("\"nodes\"")) {
                 sceneGraphEngine.start(scriptJson)
             } else {
                 scriptEngine.executeScript(scriptJson)
             }
+            */
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 載入 assets 腳本失敗: ${e.message}", e)
