@@ -113,6 +113,14 @@ class AutomationService : AccessibilityService() {
                     btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
                     isScriptRunning = false
                 } else {
+                    // Check if we have a script to run
+                    val scriptId = getScriptId()
+                    if (scriptId.isNullOrEmpty()) {
+                        showToast("⚠️ 未指定腳本，請先在網頁版指派任務")
+                        // Optional: Open web dashboard?
+                        return@setOnClickListener
+                    }
+                    
                     loadAndExecuteScript()
                     btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
                     isScriptRunning = true
