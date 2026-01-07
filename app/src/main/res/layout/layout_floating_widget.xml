@@ -58,15 +58,43 @@
     </LinearLayout>
 
     <!-- 收合狀態的 LOGO (懸浮球) -->
-    <ImageView
-        android:id="@+id/collapsed_view"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@android:mipmap/sym_def_app_icon"
-        android:background="@android:drawable/btn_default_small"
-        android:contentDescription="Floating Icon"
-        android:scaleType="centerInside"
-        android:padding="4dp"
-        android:elevation="4dp"/>
+    <!-- Collapsed Container (Icon + Status HUD) -->
+    <LinearLayout
+        android:id="@+id/collapsed_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/floating_icon"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@android:mipmap/sym_def_app_icon"
+            android:background="@android:drawable/btn_default_small"
+            android:contentDescription="Floating Icon"
+            android:scaleType="centerInside"
+            android:padding="4dp"
+            android:elevation="4dp"/>
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#B3000000"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginStart="4dp"
+            android:visibility="gone"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:maxWidth="200dp"
+            android:text="Ready"
+            android:elevation="4dp"/>
+    </LinearLayout>
 
 </FrameLayout>

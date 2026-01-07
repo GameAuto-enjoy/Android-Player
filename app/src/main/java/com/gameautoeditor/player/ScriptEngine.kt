@@ -123,7 +123,8 @@ class ScriptEngine(private val service: AutomationService) {
         val label = data.optString("label", "Node")
         
         Log.i(TAG, "▶️ Executing [$type]: $label")
-        service.showToast("▶ $label")
+        // service.showToast("▶ $label") // Toast is unreliable
+        service.updateStatus("▶ $label")
         
         when (type) {
             "start", "root" -> {

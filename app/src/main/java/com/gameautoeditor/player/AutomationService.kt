@@ -86,23 +86,25 @@ class AutomationService : AccessibilityService() {
             floatingView = android.view.LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null)
             
             // UI References
-            val collapsedView = floatingView?.findViewById<android.view.View>(R.id.collapsed_view)
+            val collapsedContainer = floatingView?.findViewById<android.view.View>(R.id.collapsed_container)
+            // For backward compatibility logic: strictly speaking we use container now
             val expandedContainer = floatingView?.findViewById<android.view.View>(R.id.expanded_container)
+            val statusText = floatingView?.findViewById<android.widget.TextView>(R.id.tv_status)
             
             val btnClose = floatingView?.findViewById<android.view.View>(R.id.btnClose)
             val btnPlayPause = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnPlayPause)
             val btnStop = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnStop)
             val btnSettings = floatingView?.findViewById<android.view.View>(R.id.btnSettings)
             
-            // 1. Expand Logic (Click Floating Ball)
-            collapsedView?.setOnClickListener {
-                collapsedView.visibility = android.view.View.GONE
+            // 1. Expand Logic (Click Floating Ball/Container)
+            collapsedContainer?.setOnClickListener {
+                collapsedContainer.visibility = android.view.View.GONE
                 expandedContainer?.visibility = android.view.View.VISIBLE
             }
 
             // 2. Collapse Logic (Click X)
             btnClose?.setOnClickListener {
-                collapsedView?.visibility = android.view.View.VISIBLE
+                collapsedContainer?.visibility = android.view.View.VISIBLE
                 expandedContainer?.visibility = android.view.View.GONE
             }
 
@@ -117,7 +119,7 @@ class AutomationService : AccessibilityService() {
             }
 
             // Long Press Ball to Remove Widget (optional convenience)
-            collapsedView?.setOnLongClickListener {
+            collapsedContainer?.setOnLongClickListener {
                 if (floatingView != null) {
                     windowManager?.removeView(floatingView)
                     floatingView = null
@@ -159,7 +161,7 @@ class AutomationService : AccessibilityService() {
             // 5. Settings (Open Activity)
             btnSettings?.setOnClickListener {
                 // Collapse first
-                collapsedView?.visibility = android.view.View.VISIBLE
+                collapsedContainer?.visibility = android.view.View.VISIBLE
                 expandedContainer?.visibility = android.view.View.GONE
                 
                 // Launch Activity for Settings
@@ -170,7 +172,7 @@ class AutomationService : AccessibilityService() {
             }
             
             // 6. Drag Logic (Only on Collapsed View for better UX)
-            collapsedView?.setOnTouchListener(object : android.view.View.OnTouchListener {
+            collapsedContainer?.setOnTouchListener(object : android.view.View.OnTouchListener {
                 private var initialX = 0
                 private var initialY = 0
                 private var initialTouchX = 0f
@@ -217,6 +219,7 @@ class AutomationService : AccessibilityService() {
     private fun stopExecution() {
         scriptEngine.stop()
         sceneGraphEngine.stop()
+        updateStatus(null) // Hide status
         Log.i(TAG, "Execution stopped by user")
     }
 
@@ -368,6 +371,18 @@ class AutomationService : AccessibilityService() {
                 Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Log.e(TAG, "Toast failed: ${e.message}")
+            }
+        }
+    }
+
+    fun updateStatus(text: String?) {
+        android.os.Handler(mainLooper).post {
+            val statusText = floatingView?.findViewById<android.widget.TextView>(R.id.tv_status)
+            if (text.isNullOrEmpty()) {
+                statusText?.visibility = android.view.View.GONE
+            } else {
+                statusText?.text = text
+                statusText?.visibility = android.view.View.VISIBLE
             }
         }
     }
