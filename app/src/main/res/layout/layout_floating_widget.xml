@@ -1,54 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:background="@drawable/bg_floating_widget"
-    android:orientation="horizontal"
-    android:paddingStart="8dp"
-    android:paddingEnd="8dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
-    android:elevation="8dp"
-    android:gravity="center_vertical">
+    android:layout_height="wrap_content">
 
-    <!-- Drag Handle -->
+    <!-- 展開後的選單容器 -->
+    <LinearLayout
+        android:id="@+id/expanded_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:padding="8dp"
+        android:visibility="gone"
+        android:gravity="center_vertical">
+
+        <!-- Close/Collapse Button -->
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close Menu"/>
+
+        <!-- Play/Pause Button -->
+        <ImageButton
+            android:id="@+id/btnPlayPause"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_media_play"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:tint="#4CAF50"
+            android:contentDescription="Play/Pause"
+            android:layout_marginStart="8dp"/>
+
+        <!-- Stop Button -->
+        <ImageButton
+            android:id="@+id/btnStop"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_media_pause"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:tint="#F44336"
+            android:contentDescription="Stop"
+            android:layout_marginStart="8dp"/>
+            
+        <!-- Settings/Schedule Button -->
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_preferences"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:tint="#2196F3"
+            android:contentDescription="Settings"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <!-- 收合狀態的 LOGO (懸浮球) -->
     <ImageView
-        android:id="@+id/iconDrag"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@drawable/ic_drag_handle"
-        android:contentDescription="Drag"
-        android:layout_marginEnd="8dp"
-        android:alpha="0.7"/>
+        android:id="@+id/collapsed_view"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@android:mipmap/sym_def_app_icon"
+        android:background="@android:drawable/btn_default_small"
+        android:contentDescription="Floating Icon"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:elevation="4dp"/>
 
-    <View
-        android:layout_width="1dp"
-        android:layout_height="20dp"
-        android:background="#40000000"
-        android:layout_marginEnd="8dp"/>
-
-    <!-- Play/Pause Button -->
-    <ImageButton
-        android:id="@+id/btnPlayPause"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:scaleType="fitCenter"
-        android:src="@android:drawable/ic_media_play"
-        android:tint="#4CAF50"
-        android:contentDescription="Play/Pause"
-        android:padding="6dp"/>
-
-    <!-- Stop Button -->
-    <ImageButton
-        android:id="@+id/btnStop"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:scaleType="fitCenter"
-        android:src="@android:drawable/ic_media_rew"
-        android:tint="#F44336"
-        android:contentDescription="Stop"
-        android:padding="6dp"/>
-        
-</LinearLayout>
+</FrameLayout>

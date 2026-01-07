@@ -85,25 +85,42 @@ class AutomationService : AccessibilityService() {
             
             floatingView = android.view.LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null)
             
-            // UI Controls
+            // UI References
+            val collapsedView = floatingView?.findViewById<android.view.View>(R.id.collapsed_view)
+            val expandedContainer = floatingView?.findViewById<android.view.View>(R.id.expanded_container)
+            
+            val btnClose = floatingView?.findViewById<android.view.View>(R.id.btnClose)
             val btnPlayPause = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnPlayPause)
             val btnStop = floatingView?.findViewById<android.widget.ImageButton>(R.id.btnStop)
-            val iconDrag = floatingView?.findViewById<android.view.View>(R.id.iconDrag)
+            val btnSettings = floatingView?.findViewById<android.view.View>(R.id.btnSettings)
             
+            // 1. Expand Logic (Click Floating Ball)
+            collapsedView?.setOnClickListener {
+                collapsedView.visibility = android.view.View.GONE
+                expandedContainer?.visibility = android.view.View.VISIBLE
+            }
+
+            // 2. Collapse Logic (Click X)
+            btnClose?.setOnClickListener {
+                collapsedView?.visibility = android.view.View.VISIBLE
+                expandedContainer?.visibility = android.view.View.GONE
+            }
+            
+            // 3. Play/Pause
             btnPlayPause?.setOnClickListener {
                 if (isScriptRunning) {
-                    // Pause/Stop
                     stopExecution()
                     btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
                     isScriptRunning = false
                 } else {
-                    // Start
                     loadAndExecuteScript()
                     btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
                     isScriptRunning = true
+                    // Auto-collapse on start? Optional.
                 }
             }
             
+            // 4. Stop
             btnStop?.setOnClickListener {
                  stopExecution()
                  btnPlayPause?.setImageResource(android.R.drawable.ic_media_play)
@@ -111,8 +128,21 @@ class AutomationService : AccessibilityService() {
                  showToast("已停止")
             }
             
-            // Drag Logic
-            iconDrag?.setOnTouchListener(object : android.view.View.OnTouchListener {
+            // 5. Settings (Open Activity)
+            btnSettings?.setOnClickListener {
+                // Collapse first
+                collapsedView?.visibility = android.view.View.VISIBLE
+                expandedContainer?.visibility = android.view.View.GONE
+                
+                // Launch Activity for Settings
+                val intent = android.content.Intent(this, MainActivity::class.java)
+                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                intent.action = "OPEN_SETTINGS"
+                startActivity(intent)
+            }
+            
+            // 6. Drag Logic (Only on Collapsed View for better UX)
+            collapsedView?.setOnTouchListener(object : android.view.View.OnTouchListener {
                 private var initialX = 0
                 private var initialY = 0
                 private var initialTouchX = 0f
@@ -125,6 +155,16 @@ class AutomationService : AccessibilityService() {
                             initialY = layoutParams.y
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
+                            return true // Consume event
+                        }
+                        android.view.MotionEvent.ACTION_UP -> {
+                            val Xdiff = (event.rawX - initialTouchX).toInt()
+                            val Ydiff = (event.rawY - initialTouchY).toInt()
+
+                            // If drag was small, treat as click
+                            if (Math.abs(Xdiff) < 10 && Math.abs(Ydiff) < 10) {
+                                v?.performClick()
+                            }
                             return true
                         }
                         android.view.MotionEvent.ACTION_MOVE -> {
@@ -139,7 +179,7 @@ class AutomationService : AccessibilityService() {
             })
             
             windowManager?.addView(floatingView, layoutParams)
-            Log.i(TAG, "悬浮窗已添加")
+            Log.i(TAG, "懸浮窗已添加")
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create floating window: ${e.message}")
