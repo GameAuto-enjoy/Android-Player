@@ -107,7 +107,7 @@ class ScriptEngine(private val service: AutomationService) {
         val data = node.optJSONObject("data") ?: JSONObject()
         val label = data.optString("label", "Node")
         
-        Log.d(TAG, "▶️ Executing [$type]: $label")
+        Log.i(TAG, "▶️ Executing [$type]: $label")
         service.showToast("▶ $label")
         
         // Execute Action based on Type
@@ -178,7 +178,7 @@ class ScriptEngine(private val service: AutomationService) {
             .build()
             
         service.dispatchGesture(gesture, null, null)
-        Log.d(TAG, "👆 Click at ($x, $y) [${xPercent}%, ${yPercent}%]")
+        Log.i(TAG, "👆 Click at ($x, $y) [${xPercent}%, ${yPercent}%]")
     }
 
     // ==========================================
