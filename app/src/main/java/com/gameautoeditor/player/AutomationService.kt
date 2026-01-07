@@ -105,6 +105,26 @@ class AutomationService : AccessibilityService() {
                 collapsedView?.visibility = android.view.View.VISIBLE
                 expandedContainer?.visibility = android.view.View.GONE
             }
+
+            // Long Press X to Remove Widget completely
+            btnClose?.setOnLongClickListener {
+                if (floatingView != null) {
+                    windowManager?.removeView(floatingView)
+                    floatingView = null
+                    showToast("懸浮窗已關閉")
+                }
+                true
+            }
+
+            // Long Press Ball to Remove Widget (optional convenience)
+            collapsedView?.setOnLongClickListener {
+                if (floatingView != null) {
+                    windowManager?.removeView(floatingView)
+                    floatingView = null
+                    showToast("懸浮窗已關閉")
+                }
+                true
+            }
             
             // 3. Play/Pause
             btnPlayPause?.setOnClickListener {
