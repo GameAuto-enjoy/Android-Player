@@ -364,7 +364,11 @@ class AutomationService : AccessibilityService() {
     
     fun showToast(message: String) {
         android.os.Handler(mainLooper).post {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            try {
+                Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Toast failed: ${e.message}")
+            }
         }
     }
 
