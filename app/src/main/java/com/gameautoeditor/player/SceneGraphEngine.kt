@@ -254,7 +254,6 @@ class SceneGraphEngine(private val service: AutomationService) {
         var template = anchorTemplates[anchorId]
         
         if (template == null) {
-        if (template == null) {
             try {
                 if (base64Template.startsWith("http")) {
                     Log.d(TAG, "Downloading anchor template for $anchorId from URL...")
