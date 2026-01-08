@@ -230,13 +230,20 @@ class SceneGraphEngine(private val service: AutomationService) {
         var template = anchorTemplates[anchorId]
         
         if (template == null) {
+        if (template == null) {
             try {
-                // Remove header if present "data:image/png;base64,"
-                val cleanBase64 = if (base64Template.contains(",")) 
-                    base64Template.split(",")[1] else base64Template
-                    
-                val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-                template = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                if (base64Template.startsWith("http")) {
+                    Log.d(TAG, "Downloading anchor template for $anchorId from URL...")
+                    val url = java.net.URL(base64Template)
+                    template = BitmapFactory.decodeStream(url.openStream())
+                } else {
+                    // Remove header if present "data:image/png;base64,"
+                    val cleanBase64 = if (base64Template.contains(",")) 
+                        base64Template.split(",")[1] else base64Template
+                        
+                    val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+                    template = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                }
                 
                 if (template != null) {
                     anchorTemplates[anchorId] = template
