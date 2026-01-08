@@ -259,6 +259,28 @@ class SceneGraphEngine(private val service: AutomationService) {
                         Log.d(TAG, "🚫 Skip '$id': Cooldown (${remainingSec}s left)")
                     }
                 }
+
+                // 3. Check Start Time (HH:mm)
+                val startTimeStr = schedule.optString("time")
+                if (startTimeStr.isNotEmpty()) {
+                    try {
+                        val parts = startTimeStr.split(":")
+                        if (parts.size == 2) {
+                            val targetHour = parts[0].toInt()
+                            val targetMin = parts[1].toInt()
+                            val cal = java.util.Calendar.getInstance()
+                            val currentHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                            val currentMin = cal.get(java.util.Calendar.MINUTE)
+
+                            if (currentHour < targetHour || (currentHour == targetHour && currentMin < targetMin)) {
+                                isRunnable = false
+                                Log.d(TAG, "🚫 Skip '$id': Not yet time ($startTimeStr)")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Invalid time format: $startTimeStr")
+                    }
+                }
             }
             
             if (isRunnable) {
