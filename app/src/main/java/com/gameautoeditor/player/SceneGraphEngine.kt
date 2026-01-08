@@ -19,6 +19,10 @@ class SceneGraphEngine(private val service: AutomationService) {
     private val handler = Handler(Looper.getMainLooper())
     private var workerThread: Thread? = null
 
+    // Scheduling State
+    data class ExecutionData(var lastRunTime: Long = 0, var runCount: Int = 0)
+    private val executionHistory = mutableMapOf<String, ExecutionData>()
+
     fun start(jsonString: String) {
         if (isRunning) return
         isRunning = true
@@ -42,6 +46,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     fun stop() {
         isRunning = false
         anchorTemplates.clear() // Clear cache
+        executionHistory.clear() // Clear history
         Log.i(TAG, "⏹️ SceneGraphEngine Stopped")
     }
 
@@ -217,33 +222,82 @@ class SceneGraphEngine(private val service: AutomationService) {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         
         // Find current node
-        var currentNode: JSONObject? = null
-        for (i in 0 until nodes.length()) {
-            val node = nodes.getJSONObject(i)
-            if (node.getString("id") == sceneId) {
-                currentNode = node
-                break
-            }
-        }
-        
-        if (currentNode == null) return null
+        val currentNode = getNodeById(sceneId) ?: return null
         
         val regions = currentNode.optJSONObject("data")?.optJSONArray("regions")
         if (regions == null || regions.length() == 0) return null
         
-        // Strategy: Pick Random (for testing) or First Available
-        val randomIndex = (0 until regions.length()).random()
-        val region = regions.getJSONObject(randomIndex)
-        val target = region.optString("target")
+        // Filter and Sort Candidates based on Schedule
+        val candidates = mutableListOf<JSONObject>()
         
-        if (target.isEmpty()) return null
+        for (i in 0 until regions.length()) {
+            val r = regions.getJSONObject(i)
+            val schedule = r.optJSONObject("schedule")
+            val id = r.optString("id") // Ensure ID exists from editor
+            
+            // Default rules
+            var isRunnable = true
+            
+            if (schedule != null && id.isNotEmpty()) {
+                val history = executionHistory.getOrPut(id) { ExecutionData() }
+                
+                // 1. Check Max Times
+                val maxTimes = schedule.optInt("maxTimes", 0)
+                if (maxTimes > 0 && history.runCount >= maxTimes) {
+                    isRunnable = false
+                    Log.d(TAG, "🚫 Skip '$id': Max times reached (${history.runCount}/$maxTimes)")
+                }
+                
+                // 2. Check Interval
+                val intervalMin = schedule.optInt("interval", 0)
+                if (intervalMin > 0) {
+                    val now = System.currentTimeMillis()
+                    val intervalMs = intervalMin * 60 * 1000L
+                    if (now - history.lastRunTime < intervalMs) {
+                        isRunnable = false
+                        val remainingSec = (intervalMs - (now - history.lastRunTime)) / 1000
+                        Log.d(TAG, "🚫 Skip '$id': Cooldown (${remainingSec}s left)")
+                    }
+                }
+            }
+            
+            if (isRunnable) {
+                candidates.add(r)
+            }
+        }
         
-        Log.i(TAG, "🤖 Decided to click '${region.optString("label")}' -> Go to $target")
-        return TransitionAction(region, target)
+        if (candidates.isEmpty()) return null
+        
+        // Sort by Priority (Low number = High Priority). Default 5.
+        // If priorities match, random (or could be sequential)
+        candidates.sortBy { 
+            it.optJSONObject("schedule")?.optInt("priority", 5) ?: 5 
+        }
+        
+        // Pick top priority (first one)
+        val bestRegion = candidates[0]
+        val target = bestRegion.optString("target")
+        
+        Log.i(TAG, "🤖 Decided to click '${bestRegion.optString("label")}' (Priority: ${bestRegion.optJSONObject("schedule")?.optInt("priority") ?: 5})")
+        
+        // Assume target is sceneId if null/empty (Self Loop) for actions like "Click Button"
+        // But logic requires valid target? If target is null, we stay in same scene?
+        // Let's assume target can be empty for 'stay here'.
+        
+        return TransitionAction(bestRegion, if (target.isEmpty()) sceneId else target)
     }
 
     private fun performAction(action: TransitionAction) {
         val r = action.region
+        
+        // Update History
+        val id = r.optString("id")
+        if (id.isNotEmpty()) {
+            val history = executionHistory.getOrPut(id) { ExecutionData() }
+            history.lastRunTime = System.currentTimeMillis()
+            history.runCount++
+            Log.d(TAG, "📊 Updated History for '$id': Count=${history.runCount}")
+        }
         val act = r.optJSONObject("action")
         val type = act?.optString("type") ?: "CLICK"
         val label = r.optString("label", "Action")
