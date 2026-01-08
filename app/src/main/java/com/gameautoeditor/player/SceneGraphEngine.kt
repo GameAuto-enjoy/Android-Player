@@ -306,6 +306,13 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         for (i in 0 until regions.length()) {
             val r = regions.getJSONObject(i)
+            
+            // 0. Check Enabled
+            if (!r.optBoolean("enabled", true)) {
+                Log.v(TAG, "🚫 Skip '${r.optString("label")}' (Disabled)")
+                continue
+            }
+
             val schedule = r.optJSONObject("schedule")
             val id = r.optString("id") // Ensure ID exists from editor
             
