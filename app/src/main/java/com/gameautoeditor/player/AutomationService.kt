@@ -362,6 +362,10 @@ class AutomationService : AccessibilityService() {
         return scriptOriginPackage
     }
 
+    fun getFgPackageName(): String? {
+        return lastForegroundPackage
+    }
+
     // Call this when script starts
     private fun recordScriptOrigin() {
         scriptOriginPackage = lastForegroundPackage

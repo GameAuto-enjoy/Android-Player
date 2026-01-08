@@ -69,6 +69,30 @@ class SceneGraphEngine(private val service: AutomationService) {
 
         while (isRunning) {
             try {
+                // 🛡️ App Guardian: Ensure we are in the correct App
+                val originPkg = service.getOriginPackageName()
+                val currentPkg = service.getFgPackageName()
+                
+                // Only enforce if both are known and different, and origin is NOT null
+                // Also ignore if current is matching our service (don't kill ourself)
+                if (originPkg != null && currentPkg != null && originPkg != currentPkg && currentPkg != service.packageName) {
+                    Log.w(TAG, "🛡️ Guardian: App Drift Detected! ($currentPkg != $originPkg)")
+                    Log.i(TAG, "🛡️ Guardian: Restoring $originPkg...")
+                    
+                    try {
+                        val intent = service.packageManager.getLaunchIntentForPackage(originPkg)
+                        if (intent != null) {
+                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                             service.startActivity(intent)
+                             // Wait for switch to complete to avoid capture loops
+                             Thread.sleep(3000) 
+                             continue
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Guardian Restore Failed", e)
+                    }
+                }
+
                 // 1. Capture Screen
                 val screen = service.captureScreenSync()
                 if (screen == null) {
