@@ -76,12 +76,26 @@ class SceneGraphEngine(private val service: AutomationService) {
                 // 2. Identify Current Scene vs Expected Scene
                 // For now, we assume we are at 'currentSceneId' and verify it, 
                 // OR we check ALL scenes to find where we are (Global Localization).
-                // Global Localization is better for recovery.
                 
-                val detectedSceneId = identifyScene(screen)
+                var detectedSceneId = identifyScene(screen)
+                
+                // Fallback: If verification failed, but our 'currentSceneId' has NO anchors defined,
+                // we assume we are there (Blind Trust). This allows "Blind Steps" or "Root with no checks".
+                if (detectedSceneId == null && currentSceneId != null) {
+                     val currentNode = getNodeById(currentSceneId)
+                     val anchors = currentNode?.optJSONObject("data")?.optJSONArray("anchors")
+                     if (anchors == null || anchors.length() == 0) {
+                         Log.w(TAG, "⚠️ Current scene '$currentSceneId' has no anchors. Assuming we are there (Blind Trust).")
+                         detectedSceneId = currentSceneId
+                     }
+                }
                 
                 if (detectedSceneId != null) {
-                    Log.i(TAG, "📍 Detected Scene: $detectedSceneId")
+                    if (detectedSceneId != currentSceneId) {
+                         Log.i(TAG, "📍 Context Switch: $currentSceneId -> $detectedSceneId")
+                    } else {
+                         Log.i(TAG, "📍 Confirmed Scene: $detectedSceneId")
+                    }
                     currentSceneId = detectedSceneId
                     
                     // 3. Decide Next Action (Regions)
@@ -100,7 +114,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                         Thread.sleep(1000)
                     }
                 } else {
-                    Log.d(TAG, "❓ Unknown Scene")
+                    Log.d(TAG, "❓ Unknown Scene (No matching anchors found)")
                     Thread.sleep(1000)
                 }
 
@@ -192,7 +206,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         // Optimization: Crop screen to expected area if 'x, y, w, h' are small?
         // For now, full screen search is safer but slower.
         
-        val result = ImageMatcher.findTemplate(screen, template!!, 0.8)
+        val result = ImageMatcher.findTemplate(screen, template!!, 0.7)
         
         return result != null
     }
@@ -298,6 +312,16 @@ class SceneGraphEngine(private val service: AutomationService) {
                 Log.e(TAG, "Gesture Dispatch Failed", e)
             }
         }
+    }
+    private fun getNodeById(id: String): JSONObject? {
+        val nodes = graphData?.optJSONArray("nodes") ?: return null
+        for (i in 0 until nodes.length()) {
+            val node = nodes.getJSONObject(i)
+            if (node.getString("id") == id) {
+                return node
+            }
+        }
+        return null
     }
 }
 
