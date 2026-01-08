@@ -241,44 +241,56 @@ class SceneGraphEngine(private val service: AutomationService) {
             if (schedule != null && id.isNotEmpty()) {
                 val history = executionHistory.getOrPut(id) { ExecutionData() }
                 
-                // 1. Check Max Times
-                val maxTimes = schedule.optInt("maxTimes", 0)
-                if (maxTimes > 0 && history.runCount >= maxTimes) {
-                    isRunnable = false
-                    Log.d(TAG, "🚫 Skip '$id': Max times reached (${history.runCount}/$maxTimes)")
-                }
+                // Check Execution Mode
+                val mode = schedule.optString("mode", "NONE")
                 
-                // 2. Check Interval
-                val intervalMin = schedule.optInt("interval", 0)
-                if (intervalMin > 0) {
-                    val now = System.currentTimeMillis()
-                    val intervalMs = intervalMin * 60 * 1000L
-                    if (now - history.lastRunTime < intervalMs) {
-                        isRunnable = false
-                        val remainingSec = (intervalMs - (now - history.lastRunTime)) / 1000
-                        Log.d(TAG, "🚫 Skip '$id': Cooldown (${remainingSec}s left)")
-                    }
-                }
-
-                // 3. Check Start Time (HH:mm)
-                val startTimeStr = schedule.optString("time")
-                if (startTimeStr.isNotEmpty()) {
-                    try {
-                        val parts = startTimeStr.split(":")
-                        if (parts.size == 2) {
-                            val targetHour = parts[0].toInt()
-                            val targetMin = parts[1].toInt()
-                            val cal = java.util.Calendar.getInstance()
-                            val currentHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                            val currentMin = cal.get(java.util.Calendar.MINUTE)
-
-                            if (currentHour < targetHour || (currentHour == targetHour && currentMin < targetMin)) {
+                when (mode) {
+                    "INTERVAL" -> {
+                        val intervalMin = schedule.optInt("interval", 0)
+                        if (intervalMin > 0) {
+                            val now = System.currentTimeMillis()
+                            val intervalMs = intervalMin * 60 * 1000L
+                            if (now - history.lastRunTime < intervalMs) {
                                 isRunnable = false
-                                Log.d(TAG, "🚫 Skip '$id': Not yet time ($startTimeStr)")
+                                val remainingSec = (intervalMs - (now - history.lastRunTime)) / 1000
+                                Log.d(TAG, "🚫 Skip '$id' (Interval): Cooldown (${remainingSec}s left)")
                             }
                         }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Invalid time format: $startTimeStr")
+                    }
+                    "COUNT" -> {
+                        val maxTimes = schedule.optInt("maxTimes", 0)
+                        if (maxTimes > 0 && history.runCount >= maxTimes) {
+                            isRunnable = false
+                            Log.d(TAG, "🚫 Skip '$id' (Count): Max times reached (${history.runCount}/$maxTimes)")
+                        }
+                    }
+                    "TIME" -> {
+                        val startTimeStr = schedule.optString("time")
+                        if (startTimeStr.isNotEmpty()) {
+                            try {
+                                val parts = startTimeStr.split(":")
+                                if (parts.size == 2) {
+                                    val targetHour = parts[0].toInt()
+                                    val targetMin = parts[1].toInt()
+                                    val cal = java.util.Calendar.getInstance()
+                                    val currentHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                                    val currentMin = cal.get(java.util.Calendar.MINUTE)
+
+                                    if (currentHour < targetHour || (currentHour == targetHour && currentMin < targetMin)) {
+                                        isRunnable = false
+                                        Log.d(TAG, "🚫 Skip '$id' (Time): Not yet time ($startTimeStr)")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Invalid time format: $startTimeStr")
+                            }
+                        }
+                    }
+                    else -> {
+                        // NONE or Legacy: Logic fallback if needed, but currently NONE means specific constraints.
+                        // For backward compatibility, if specific fields exist despite mode "NONE", we COULD check them,
+                        // but moving forward "NONE" implies no restriction (except Priority).
+                        // Let's strictly follow the new MODE if present.
                     }
                 }
             }
