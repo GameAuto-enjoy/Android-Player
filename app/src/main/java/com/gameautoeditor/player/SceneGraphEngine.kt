@@ -148,29 +148,49 @@ class SceneGraphEngine(private val service: AutomationService) {
     private fun identifyScene(screen: Bitmap): String? {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         
-        // Simple strategy: Check all scenes with anchors. 
-        // Return first match that satisfies All anchors (or majority).
+        // Strategy: 
+        // 1. Check Global/Interrupt scenes FIRST (High Priority)
+        // 2. Check ANY other scenes (Normal Flow)
+        // Optimized loop: Single pass? No, priority matters.
+        
+        val globalNodes = mutableListOf<JSONObject>()
+        val normalNodes = mutableListOf<JSONObject>()
         
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
-            val anchors = node.optJSONObject("data")?.optJSONArray("anchors")
-            
-            if (anchors == null || anchors.length() == 0) continue
-            
-            var matchCount = 0
-            for (j in 0 until anchors.length()) {
-                val anchor = anchors.getJSONObject(j)
-                if (matchSingleAnchor(screen, anchor, node)) {
-                    matchCount++
-                }
-            }
-            
-            // Threshold: All, or at least 1? Let's say ALL for now for strictness.
-            if (matchCount == anchors.length() && matchCount > 0) {
-                return node.getString("id")
+            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
+                globalNodes.add(node)
+            } else {
+                normalNodes.add(node)
             }
         }
+        
+        // 1. Check Global Candidates
+        for (node in globalNodes) {
+            if (checkNodeAnchors(node, screen)) return node.getString("id")
+        }
+        
+        // 2. Check Normal Candidates
+        for (node in normalNodes) {
+            if (checkNodeAnchors(node, screen)) return node.getString("id")
+        }
+        
         return null
+    }
+
+    private fun checkNodeAnchors(node: JSONObject, screen: Bitmap): Boolean {
+        val anchors = node.optJSONObject("data")?.optJSONArray("anchors")
+        if (anchors == null || anchors.length() == 0) return false
+        
+        var matchCount = 0
+        for (j in 0 until anchors.length()) {
+            val anchor = anchors.getJSONObject(j)
+            if (matchSingleAnchor(screen, anchor, node)) {
+                matchCount++
+            }
+        }
+        // Strict match: All anchors must match
+        return matchCount == anchors.length() && matchCount > 0
     }
 
     private fun matchSingleAnchor(screen: Bitmap, anchor: JSONObject, node: JSONObject): Boolean {
