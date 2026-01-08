@@ -386,7 +386,13 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         // 0. Handle Special Actions (LAUNCH_APP, BACK_KEY)
         if (type == "LAUNCH_APP") {
-            val pkg = params?.optString("packageName")
+            var pkg = params?.optString("packageName")
+            // Use Origin Package if not specified
+            if (pkg.isNullOrEmpty() || pkg == "SELF") {
+                 pkg = service.getOriginPackageName()
+                 Log.i(TAG, "🔄 Using detected origin package: $pkg")
+            }
+            
             if (!pkg.isNullOrEmpty()) {
                 try {
                     val intent = service.packageManager.getLaunchIntentForPackage(pkg)
@@ -401,6 +407,8 @@ class SceneGraphEngine(private val service: AutomationService) {
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Failed to launch app", e)
                 }
+            } else {
+                 service.showToast("⚠️ 未知目標APP (Unknown Target)")
             }
             return
         }

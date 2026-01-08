@@ -224,6 +224,9 @@ class AutomationService : AccessibilityService() {
     }
 
     private fun loadAndExecuteScript() {
+        // Record the app where the script was started
+        recordScriptOrigin()
+
         try {
             // 優先從網路載入腳本（支援預編譯模板）
             val scriptId = getScriptId()
@@ -341,8 +344,31 @@ class AutomationService : AccessibilityService() {
         }
     }
     
+    private var lastForegroundPackage: String? = null
+    private var scriptOriginPackage: String? = null
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // 可在此監聽畫面變化事件
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString()
+            // Ignore our own overlay or system UI if possible, but mainly our own package
+            if (!pkg.isNullOrEmpty() && pkg != packageName) {
+                lastForegroundPackage = pkg
+                Log.v(TAG, "📱 Foreground App Changed: $pkg")
+            }
+        }
+    }
+
+    fun getOriginPackageName(): String? {
+        return scriptOriginPackage
+    }
+
+    // Call this when script starts
+    private fun recordScriptOrigin() {
+        scriptOriginPackage = lastForegroundPackage
+        Log.i(TAG, "🔒 Script Origin Locked: $scriptOriginPackage")
+        if (scriptOriginPackage == null) {
+            showToast("⚠️ 無法偵測原始遊戲，請手動確認")
+        }
     }
     
     override fun onInterrupt() {
