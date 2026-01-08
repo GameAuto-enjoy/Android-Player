@@ -115,8 +115,30 @@ class SceneGraphEngine(private val service: AutomationService) {
                         Log.d(TAG, "⏳ Waiting ${waitTime}ms...")
                         Thread.sleep(waitTime) 
                     } else {
-                        Log.d(TAG, "No edges/regions to traverse from here or condition not met.")
-                        Thread.sleep(1000)
+                        // No action available in current scene
+                        Log.d(TAG, "⚠️ No runnable actions in '$currentSceneId'")
+                        
+                        // Check if we're NOT already at Root
+                        val currentNode = getNodeById(currentSceneId)
+                        val isCurrentRoot = currentNode?.optJSONObject("data")?.optBoolean("isRoot") == true
+                        
+                        if (!isCurrentRoot) {
+                            // Return to Root for re-evaluation
+                            val rootId = findRootNodeId()
+                            if (rootId != null && rootId != currentSceneId) {
+                                Log.i(TAG, "🔄 Auto-Return to Root: $currentSceneId -> $rootId")
+                                currentSceneId = rootId
+                                // Give a short delay before re-evaluation
+                                Thread.sleep(500)
+                            } else {
+                                Log.w(TAG, "⚠️ No Root scene found or already at Root. Waiting...")
+                                Thread.sleep(2000)
+                            }
+                        } else {
+                            // Already at Root but no action available
+                            Log.d(TAG, "⏸️ At Root but no action meets conditions. Waiting...")
+                            Thread.sleep(2000)
+                        }
                     }
                 } else {
                     Log.d(TAG, "❓ Unknown Scene (No matching anchors found)")
