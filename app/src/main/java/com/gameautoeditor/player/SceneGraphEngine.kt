@@ -10,6 +10,7 @@ import android.util.Base64
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
+import android.content.Intent
 
 class SceneGraphEngine(private val service: AutomationService) {
     private val TAG = "SceneGraphEngine"
@@ -380,7 +381,35 @@ class SceneGraphEngine(private val service: AutomationService) {
         val params = act?.optJSONObject("params")
         
         // Show Prompt
+        // Show Prompt
         service.showToast("▶ $label")
+        
+        // 0. Handle Special Actions (LAUNCH_APP, BACK_KEY)
+        if (type == "LAUNCH_APP") {
+            val pkg = params?.optString("packageName")
+            if (!pkg.isNullOrEmpty()) {
+                try {
+                    val intent = service.packageManager.getLaunchIntentForPackage(pkg)
+                    if (intent != null) {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        service.startActivity(intent)
+                        Log.i(TAG, "🚀 Launched App: $pkg")
+                    } else {
+                        Log.w(TAG, "⚠️ App not found: $pkg")
+                        service.showToast("App not found: $pkg")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to launch app", e)
+                }
+            }
+            return
+        }
+        
+        if (type == "BACK_KEY") {
+             service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+             Log.i(TAG, "🔙 Performed Global BACK Action")
+             return
+        }
         
         // 1. Calculate Base Coordinates (Center of Region)
         val xPercent = r.getDouble("x")
