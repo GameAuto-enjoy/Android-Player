@@ -348,12 +348,18 @@ class AutomationService : AccessibilityService() {
     private var scriptOriginPackage: String? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val pkg = event.packageName?.toString()
-            // Ignore our own overlay or system UI if possible, but mainly our own package
-            if (!pkg.isNullOrEmpty() && pkg != packageName) {
+        // Capture package name from events to track foreground app
+        if (event?.packageName != null) {
+            val pkg = event.packageName.toString()
+            
+            // Ignore valid system packages or self
+            // com.android.systemui = Notification shade / Status bar (Allow tracking this? No, we don't want to switch back if user pulls status bar temporarily? Actually we DO want to switch back if they stay there. But SystemUI usually overlays. Let's ignore it.)
+            if (pkg != packageName && pkg != "com.android.systemui" && !pkg.contains("inputmethod")) {
                 lastForegroundPackage = pkg
-                Log.v(TAG, "📱 Foreground App Changed: $pkg")
+                
+                if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                    Log.v(TAG, "📱 Foreground App Changed: $pkg")
+                }
             }
         }
     }
@@ -368,10 +374,26 @@ class AutomationService : AccessibilityService() {
 
     // Call this when script starts
     private fun recordScriptOrigin() {
+        // Fallback: Try to get from root window if null
+        if (lastForegroundPackage == null) {
+             try {
+                val root = rootInActiveWindow
+                if (root != null && root.packageName != null) {
+                    val pkg = root.packageName.toString()
+                    if (pkg != packageName) {
+                        lastForegroundPackage = pkg
+                    }
+                }
+             } catch(e: Exception) {}
+        }
+
         scriptOriginPackage = lastForegroundPackage
         Log.i(TAG, "🔒 Script Origin Locked: $scriptOriginPackage")
         if (scriptOriginPackage == null) {
             showToast("⚠️ 無法偵測原始遊戲，請手動確認")
+        } else {
+            // Optional: Show toast to confirm
+            // showToast("🔒 鎖定遊戲: $scriptOriginPackage")
         }
     }
     
