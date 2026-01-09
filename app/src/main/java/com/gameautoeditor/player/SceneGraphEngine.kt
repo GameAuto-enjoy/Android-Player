@@ -77,20 +77,27 @@ class SceneGraphEngine(private val service: AutomationService) {
                 // Also ignore if current is matching our service (don't kill ourself)
                 if (originPkg != null && currentPkg != null && originPkg != currentPkg && currentPkg != service.packageName) {
                     Log.w(TAG, "🛡️ Guardian: App Drift Detected! ($currentPkg != $originPkg)")
-                    Log.i(TAG, "🛡️ Guardian: Restoring $originPkg...")
                     
                     try {
+                        Log.i(TAG, "🛡️ Guardian: Restoring $originPkg...")
                         val intent = service.packageManager.getLaunchIntentForPackage(originPkg)
                         if (intent != null) {
                              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                              service.startActivity(intent)
-                             // Wait for switch to complete to avoid capture loops
-                             Thread.sleep(3000) 
-                             continue
+                             // Wait strictly
+                             Thread.sleep(3000)
+                        } else {
+                             Log.w(TAG, "🛡️ Guardian: No Launch Intent found for $originPkg")
+                             service.showToast("⚠️ 無法自動返回，請手動切回遊戲")
+                             Thread.sleep(2000)
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Guardian Restore Failed", e)
+                        Log.e(TAG, "🛡️ Guardian: Restore Failed", e)
+                        Thread.sleep(2000)
                     }
+                    
+                    // ⛔ CRITICAL: Always skip execution if not in origin app
+                    continue
                 }
 
                 // 1. Capture Screen
