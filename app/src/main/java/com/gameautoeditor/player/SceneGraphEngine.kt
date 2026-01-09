@@ -269,6 +269,18 @@ class SceneGraphEngine(private val service: AutomationService) {
     }
 
     private fun matchSingleAnchor(screen: Bitmap, anchor: JSONObject, node: JSONObject): Boolean {
+        // 0. Check Match Type
+        val matchType = anchor.optString("matchType", "image")
+
+        if (matchType.equals("color", ignoreCase = true)) {
+             val targetColor = anchor.optString("targetColor")
+             if (targetColor.isNotEmpty()) {
+                 return checkColorMatch(screen, anchor, targetColor)
+             } else {
+                 Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is COLOR type but missing 'targetColor'. Falling back to image match.")
+             }
+        }
+
         // 1. Get Base64 Template
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) {
@@ -581,6 +593,69 @@ class SceneGraphEngine(private val service: AutomationService) {
             } catch (e: Exception) {
                 Log.e(TAG, "Gesture Dispatch Failed", e)
             }
+        }
+    }
+
+    private fun checkColorMatch(screen: Bitmap, anchor: JSONObject, targetHex: String): Boolean {
+        try {
+            val targetColor = android.graphics.Color.parseColor(targetHex)
+            val tr = android.graphics.Color.red(targetColor)
+            val tg = android.graphics.Color.green(targetColor)
+            val tb = android.graphics.Color.blue(targetColor)
+            
+            val ax = anchor.optDouble("x", 0.0)
+            val ay = anchor.optDouble("y", 0.0)
+            val aw = anchor.optDouble("w", 0.0)
+            val ah = anchor.optDouble("h", 0.0)
+            
+            val x = (ax / 100.0 * screen.width).toInt().coerceIn(0, screen.width - 1)
+            val y = (ay / 100.0 * screen.height).toInt().coerceIn(0, screen.height - 1)
+            val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
+            val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
+            
+            if (w <= 0 || h <= 0) return false
+            
+            var rSum = 0L
+            var gSum = 0L
+            var bSum = 0L
+            var count = 0
+            
+            val pixels = IntArray(w * h)
+            screen.getPixels(pixels, 0, w, x, y, w, h)
+            
+            for (pixel in pixels) {
+                rSum += android.graphics.Color.red(pixel)
+                gSum += android.graphics.Color.green(pixel)
+                bSum += android.graphics.Color.blue(pixel)
+                count++
+            }
+            
+            if (count == 0) return false
+            
+            val ar = (rSum / count).toInt()
+            val ag = (gSum / count).toInt()
+            val ab = (bSum / count).toInt()
+            
+            val dist = kotlin.math.sqrt(
+                ((tr - ar) * (tr - ar) + 
+                 (tg - ag) * (tg - ag) + 
+                 (tb - ab) * (tb - ab)).toDouble()
+            )
+            
+            // Tolerance: 35 (approx 13% deviation), adjustable
+            val tolerance = 35.0
+            
+            if (dist < tolerance) {
+                Log.d(TAG, "🎨 Color Match Success for ${anchor.optString("id")}: dist=${dist.toInt()}")
+                return true
+            } else {
+                Log.v(TAG, "🎨 Color Match Failed: dist=${dist.toInt()}, Target($targetHex) vs Found(R$ar,G$ag,B$ab)")
+                return false
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Color match error", e)
+            return false
         }
     }
     private fun getNodeById(id: String): JSONObject? {
