@@ -294,6 +294,15 @@ class SceneGraphEngine(private val service: AutomationService) {
              }
         }
 
+        if (matchType.equals("ai", ignoreCase = true)) {
+             val targetPrompt = anchor.optString("targetPrompt")
+             if (targetPrompt.isNotEmpty()) {
+                 return checkAiMatch(screen, anchor, targetPrompt)
+             } else {
+                  Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is AI type but missing 'targetPrompt'.")
+             }
+        }
+
         // 1. Get Base64 Template
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) {
@@ -606,6 +615,66 @@ class SceneGraphEngine(private val service: AutomationService) {
             } catch (e: Exception) {
                 Log.e(TAG, "Gesture Dispatch Failed", e)
             }
+        }
+    }
+
+    private fun checkAiMatch(screen: Bitmap, anchor: JSONObject, prompt: String): Boolean {
+        try {
+            // 1. Crop
+            val ax = anchor.optDouble("x", 0.0)
+            val ay = anchor.optDouble("y", 0.0)
+            val aw = anchor.optDouble("w", 0.0)
+            val ah = anchor.optDouble("h", 0.0)
+
+            val x = (ax / 100.0 * screen.width).toInt().coerceIn(0, screen.width - 1)
+            val y = (ay / 100.0 * screen.height).toInt().coerceIn(0, screen.height - 1)
+            val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
+            val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
+            
+            if (w <= 0 || h <= 0) return false
+            
+            val crop = Bitmap.createBitmap(screen, x, y, w, h)
+            
+            // 2. Compress to Base64 (JPEG, 70% quality)
+            val byteArrayOutputStream = java.io.ByteArrayOutputStream()
+            crop.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+            val byteArray = byteArrayOutputStream.toByteArray()
+            val base64Image = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+            
+            // 3. HTTP Request
+            val url = java.net.URL("https://game-auto-editor.vercel.app/api/ai-check")
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            
+            val jsonBody = JSONObject()
+            jsonBody.put("prompt", prompt)
+            jsonBody.put("imageBase64", base64Image)
+            
+            conn.outputStream.use { os ->
+                val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                os.write(input, 0, input.size)
+            }
+            
+            val responseCode = conn.responseCode
+            if (responseCode == 200) {
+                conn.inputStream.bufferedReader().use { reader ->
+                    val response = reader.readText()
+                    val resultJson = JSONObject(response)
+                    val match = resultJson.optBoolean("match")
+                    val reason = resultJson.optString("reason")
+                    Log.i(TAG, "🤖 AI Check Result: $match ($reason)")
+                    return match
+                }
+            } else {
+                Log.e(TAG, "AI Check Failed: HTTP $responseCode")
+                return false
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "AI Check Error", e)
+            return false
         }
     }
 
