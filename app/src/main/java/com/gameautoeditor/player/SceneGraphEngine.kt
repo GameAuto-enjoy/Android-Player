@@ -11,6 +11,10 @@ import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import android.content.Intent
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import com.google.mlkit.vision.common.InputImage
+import com.google.android.gms.tasks.Tasks
 
 class SceneGraphEngine(private val service: AutomationService) {
     private val TAG = "GameAuto"
@@ -278,6 +282,15 @@ class SceneGraphEngine(private val service: AutomationService) {
                  return checkColorMatch(screen, anchor, targetColor)
              } else {
                  Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is COLOR type but missing 'targetColor'. Falling back to image match.")
+             }
+        }
+
+        if (matchType.equals("text", ignoreCase = true)) {
+             val targetText = anchor.optString("targetText")
+             if (targetText.isNotEmpty()) {
+                 return checkTextMatch(screen, anchor, targetText)
+             } else {
+                  Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is TEXT type but missing 'targetText'.")
              }
         }
 
@@ -593,6 +606,42 @@ class SceneGraphEngine(private val service: AutomationService) {
             } catch (e: Exception) {
                 Log.e(TAG, "Gesture Dispatch Failed", e)
             }
+        }
+    }
+
+    private fun checkTextMatch(screen: Bitmap, anchor: JSONObject, targetText: String): Boolean {
+        try {
+            val ax = anchor.optDouble("x", 0.0)
+            val ay = anchor.optDouble("y", 0.0)
+            val aw = anchor.optDouble("w", 0.0)
+            val ah = anchor.optDouble("h", 0.0)
+
+            val x = (ax / 100.0 * screen.width).toInt().coerceIn(0, screen.width - 1)
+            val y = (ay / 100.0 * screen.height).toInt().coerceIn(0, screen.height - 1)
+            val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
+            val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
+            
+            if (w <= 0 || h <= 0) return false
+            
+            val crop = Bitmap.createBitmap(screen, x, y, w, h)
+            val image = InputImage.fromBitmap(crop, 0)
+            
+            val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
+            val task = recognizer.process(image)
+            val result = Tasks.await(task) 
+            
+            val foundText = result.text.replace("\n", "").trim()
+            // Log.v(TAG, "🔤 OCR Scanned: '$foundText' (Expected: '$targetText')")
+            
+            if (foundText.contains(targetText, ignoreCase = true)) {
+                Log.d(TAG, "🔤 OCR Match Success! Found: '$foundText'")
+                return true
+            }
+            return false
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "OCR Check Failed", e)
+            return false
         }
     }
 
