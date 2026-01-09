@@ -314,7 +314,33 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         val result = ImageMatcher.findTemplate(screen, template!!, 0.7)
         
-        return result != null
+        if (result != null) {
+             // Verify Position Strictness
+             val expectedX = anchor.optDouble("x", -1.0)
+             val expectedY = anchor.optDouble("y", -1.0)
+             
+             if (expectedX >= 0 && expectedY >= 0) {
+                 val matchX = result.x
+                 val matchY = result.y
+                 val screenW = screen.width.toDouble()
+                 val screenH = screen.height.toDouble()
+                 
+                 val targetX = (expectedX / 100.0) * screenW
+                 val targetY = (expectedY / 100.0) * screenH
+                 
+                 // Tolerance: 15% of screen size (Generous but filters wild jumps)
+                 val tolX = screenW * 0.15
+                 val tolY = screenH * 0.15
+                 
+                 if (kotlin.math.abs(matchX - targetX) > tolX || kotlin.math.abs(matchY - targetY) > tolY) {
+                     Log.w(TAG, "⚠️ Anchor Position Mismatch for ${anchorId}: Found($matchX, $matchY) vs Expected($targetX, $targetY)")
+                     return false
+                 }
+             }
+             return true
+        }
+        
+        return false
     }
 
     data class TransitionAction(val region: JSONObject, val targetSceneId: String)
