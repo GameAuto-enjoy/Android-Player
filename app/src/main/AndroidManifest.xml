@@ -18,6 +18,11 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.GameAutoPlayer">
+        
+        <!-- Auto-download ML Kit Models -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr,ocr_chinese" />
 
         <activity
             android:name=".MainActivity"

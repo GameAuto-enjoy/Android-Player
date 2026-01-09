@@ -709,7 +709,13 @@ class SceneGraphEngine(private val service: AutomationService) {
             return false
             
         } catch (e: Exception) {
-            Log.e(TAG, "OCR Check Failed", e)
+            val msg = e.message ?: ""
+            // Handle ML Kit downloading state gracefully
+            if (msg.contains("Waiting for the text optional module")) {
+                 Log.w(TAG, "⏳ OCR 中文模型下載中，請保持網路連線並稍候... (System is downloading ML Kit Model)")
+            } else {
+                 Log.e(TAG, "OCR Check Failed", e)
+            }
             return false
         }
     }
