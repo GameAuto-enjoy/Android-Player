@@ -16,7 +16,7 @@ import java.net.URL
 import kotlin.math.max
 
 object ImageMatcher {
-    private const val TAG = "ImageMatcher"
+    private const val TAG = "GameAuto"
     private var isInitialized = false
 
     init {

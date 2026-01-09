@@ -13,7 +13,7 @@ import org.json.JSONObject
 import android.content.Intent
 
 class SceneGraphEngine(private val service: AutomationService) {
-    private val TAG = "SceneGraphEngine"
+    private val TAG = "GameAuto"
     private val anchorTemplates = mutableMapOf<String, Bitmap>()
     private var graphData: JSONObject? = null
     private var isRunning = false

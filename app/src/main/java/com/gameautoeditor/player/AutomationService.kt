@@ -9,7 +9,7 @@ import java.io.InputStreamReader
 
 class AutomationService : AccessibilityService() {
     
-    private val TAG = "AutomationService"
+    private val TAG = "GameAuto"
     private lateinit var sceneGraphEngine: SceneGraphEngine
     private lateinit var scriptEngine: ScriptEngine
     

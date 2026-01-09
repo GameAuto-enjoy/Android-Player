@@ -14,7 +14,7 @@ import android.graphics.Bitmap
 
 class ScriptEngine(private val service: AutomationService) {
     
-    private val TAG = "ScriptEngine"
+    private val TAG = "GameAuto"
     private val handler = Handler(Looper.getMainLooper())
     private var isRunning = false
     private val variables = mutableMapOf<String, String>()
