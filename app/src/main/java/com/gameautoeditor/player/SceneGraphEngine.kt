@@ -192,13 +192,29 @@ class SceneGraphEngine(private val service: AutomationService) {
         return null
     }
 
+    private var expectedNextSceneId: String? = null
+
     private fun identifyScene(screen: Bitmap): String? {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
+        
+        // 0. Check Expected Next Scene FIRST (Optimistic Priority)
+        if (expectedNextSceneId != null) {
+             val expectedNode = getNodeById(expectedNextSceneId!!)
+             if (expectedNode != null) {
+                 if (checkNodeAnchors(expectedNode, screen)) {
+                     Log.i(TAG, "🎯 Optimistic Match: $expectedNextSceneId")
+                     val matchedId = expectedNextSceneId
+                     expectedNextSceneId = null // Consume expectation
+                     return matchedId
+                 } else {
+                     Log.v(TAG, "🤔 Expected $expectedNextSceneId but anchors didn't match yet.")
+                 }
+             }
+        }
         
         // Strategy: 
         // 1. Check Global/Interrupt scenes FIRST (High Priority)
         // 2. Check ANY other scenes (Normal Flow)
-        // Optimized loop: Single pass? No, priority matters.
         
         val globalNodes = mutableListOf<JSONObject>()
         val normalNodes = mutableListOf<JSONObject>()
@@ -214,12 +230,17 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         // 1. Check Global Candidates
         for (node in globalNodes) {
-            if (checkNodeAnchors(node, screen)) return node.getString("id")
+             val id = node.getString("id")
+             // Skip if same as current checking expected (already checked)
+             if (id == expectedNextSceneId) continue 
+             if (checkNodeAnchors(node, screen)) return id
         }
         
         // 2. Check Normal Candidates
         for (node in normalNodes) {
-            if (checkNodeAnchors(node, screen)) return node.getString("id")
+             val id = node.getString("id")
+             if (id == expectedNextSceneId) continue
+             if (checkNodeAnchors(node, screen)) return id
         }
         
         return null
@@ -467,6 +488,12 @@ class SceneGraphEngine(private val service: AutomationService) {
         val centerY = (metrics.heightPixels * (yPercent + hPercent / 2) / 100).toFloat()
 
         Log.i(TAG, "⚡ Performing $type at ($centerX, $centerY)")
+
+        // Set Expected Next Scene (Optimistic)
+        if (action.targetSceneId.isNotEmpty() && action.targetSceneId != "null" && action.targetSceneId != "root") {
+             expectedNextSceneId = action.targetSceneId
+             Log.d(TAG, "🔭 Setting Expected Next Scene: $expectedNextSceneId")
+        }
 
         handler.post {
             val path = Path()
