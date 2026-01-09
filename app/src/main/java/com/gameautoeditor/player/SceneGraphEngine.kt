@@ -272,6 +272,12 @@ class SceneGraphEngine(private val service: AutomationService) {
         // 1. Get Base64 Template
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) {
+            val mType = anchor.optString("matchType")
+            if (mType.equals("color", ignoreCase = true)) {
+                 Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) uses 'COLOR' match type which is NOT supported yet. Please delete and recreate as IMAGE anchor.")
+            } else {
+                 Log.w(TAG, "⚠️ Anchor ${anchor.optString("id")} has empty template. Skipping.")
+            }
             return false 
         }
 
