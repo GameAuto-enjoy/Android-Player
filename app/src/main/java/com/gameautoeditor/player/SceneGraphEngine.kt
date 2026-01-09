@@ -368,9 +368,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                  val targetX = (expectedX / 100.0) * screenW
                  val targetY = (expectedY / 100.0) * screenH
                  
-                 // Tolerance: 15% of screen size (Generous but filters wild jumps)
-                 val tolX = screenW * 0.15
-                 val tolY = screenH * 0.15
+                 // Tolerance: 25% of screen size (Relaxed to handle resolution drifts)
+                 val tolX = screenW * 0.25
+                 val tolY = screenH * 0.25
                  
                  if (kotlin.math.abs(matchX - targetX) > tolX || kotlin.math.abs(matchY - targetY) > tolY) {
                      Log.w(TAG, "⚠️ Anchor Position Mismatch for ${anchorId}: Found($matchX, $matchY) vs Expected($targetX, $targetY)")
