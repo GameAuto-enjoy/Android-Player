@@ -462,6 +462,20 @@ class SceneGraphEngine(private val service: AutomationService) {
                 }
             }
             
+            // Check Logic Condition (Smart Loop)
+            val condition = r.optJSONObject("condition")
+            if (condition != null) {
+                val variable = condition.optString("variable")
+                if (variable.isNotEmpty()) {
+                     val currentVal = variables[variable] ?: 0
+                     // Default operator is "> 0"
+                     if (currentVal <= 0) {
+                         isRunnable = false
+                         Log.d(TAG, "🚫 Skip '${r.optString("label")}' (Condition): $variable($currentVal) <= 0")
+                     }
+                }
+            }
+            
             if (isRunnable) {
                 candidates.add(r)
             }
@@ -490,6 +504,19 @@ class SceneGraphEngine(private val service: AutomationService) {
 
     private fun performAction(action: TransitionAction) {
         val r = action.region
+        
+        // Execute Side Effects (Smart Loop)
+        val sideEffect = r.optJSONObject("sideEffect")
+        if (sideEffect != null) {
+            val type = sideEffect.optString("type")
+            val variable = sideEffect.optString("variable")
+            if (type == "DECREMENT" && variable.isNotEmpty()) {
+                val currentVal = variables[variable] ?: 0
+                val newVal = (currentVal - 1).coerceAtLeast(0)
+                variables[variable] = newVal
+                Log.i(TAG, "📉 Side Effect: $variable = $newVal (-1)")
+            }
+        }
         
         // Update History
         val id = r.optString("id")
