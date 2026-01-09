@@ -11,8 +11,8 @@ android {
         applicationId "com.gameautoeditor.player"
         minSdk 24
         targetSdk 34
-        versionCode 28
-        versionName "1.4.1"
+        versionCode 29
+        versionName "1.4.2"
     }
 
     signingConfigs {
@@ -57,8 +57,8 @@ dependencies {
     // OpenCV for Android
     implementation 'com.quickbirdstudios:opencv:4.5.3.0'
     
-    // ML Kit Text Recognition (Chinese)
-    implementation 'com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.0'
+    // ML Kit Text Recognition (Chinese) - Bundled (Instant use, larger APK)
+    implementation 'com.google.mlkit:text-recognition-chinese:16.0.0'
     
     // JSON Parsing
     implementation 'com.google.code.gson:gson:2.10.1'
