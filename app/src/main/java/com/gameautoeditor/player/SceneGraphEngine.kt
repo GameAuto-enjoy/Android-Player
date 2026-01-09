@@ -27,6 +27,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     // Scheduling State
     data class ExecutionData(var lastRunTime: Long = 0, var runCount: Int = 0)
     private val executionHistory = mutableMapOf<String, ExecutionData>()
+    private val variables = mutableMapOf<String, Int>()
 
     fun start(jsonString: String) {
         if (isRunning) return
@@ -272,115 +273,107 @@ class SceneGraphEngine(private val service: AutomationService) {
         return matchCount == anchors.length() && matchCount > 0
     }
 
+    private fun extractNumber(text: String): Int? {
+        val regex = Regex("\\d+")
+        return regex.find(text)?.value?.toIntOrNull()
+    }
+
     private fun matchSingleAnchor(screen: Bitmap, anchor: JSONObject, node: JSONObject): Boolean {
-        // 0. Check Match Type
         val matchType = anchor.optString("matchType", "image")
+        var isMatch = false
+        var extractedContent: String? = null
 
         if (matchType.equals("color", ignoreCase = true)) {
              val targetColor = anchor.optString("targetColor")
              if (targetColor.isNotEmpty()) {
-                 return checkColorMatch(screen, anchor, targetColor)
+                 isMatch = checkColorMatch(screen, anchor, targetColor)
              } else {
-                 Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is COLOR type but missing 'targetColor'. Falling back to image match.")
+                 Log.e(TAG, "❌ Missing targetColor for anchor ${anchor.optString("id")}")
              }
-        }
-
-        if (matchType.equals("text", ignoreCase = true)) {
+        } else if (matchType.equals("text", ignoreCase = true)) {
              val targetText = anchor.optString("targetText")
-             if (targetText.isNotEmpty()) {
-                 return checkTextMatch(screen, anchor, targetText)
-             } else {
-                  Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is TEXT type but missing 'targetText'.")
-             }
-        }
-
-        if (matchType.equals("ai", ignoreCase = true)) {
+             val result = checkTextMatch(screen, anchor, targetText)
+             isMatch = result.first
+             extractedContent = result.second
+        } else if (matchType.equals("ai", ignoreCase = true)) {
              val targetPrompt = anchor.optString("targetPrompt")
              if (targetPrompt.isNotEmpty()) {
-                 return checkAiMatch(screen, anchor, targetPrompt)
+                 val result = checkAiMatch(screen, anchor, targetPrompt)
+                 isMatch = result.first
+                 extractedContent = result.second
              } else {
-                  Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) is AI type but missing 'targetPrompt'.")
+                 Log.e(TAG, "❌ Missing targetPrompt for AI anchor ${anchor.optString("id")}")
              }
-        }
-
-        // 1. Get Base64 Template
-        val base64Template = anchor.optString("template")
-        if (base64Template.isEmpty()) {
-            val mType = anchor.optString("matchType")
-            if (mType.equals("color", ignoreCase = true)) {
-                 Log.e(TAG, "❌ Anchor(${anchor.optString("id")}) uses 'COLOR' match type which is NOT supported yet. Please delete and recreate as IMAGE anchor.")
-            } else {
-                 Log.w(TAG, "⚠️ Anchor ${anchor.optString("id")} has empty template. Skipping.")
-            }
-            return false 
-        }
-
-        // 2. Decode Template (using cache)
-        val anchorId = anchor.optString("id")
-        if (anchorId.isEmpty()) return false
-
-        var template = anchorTemplates[anchorId]
-        
-        if (template == null) {
-            try {
-                if (base64Template.startsWith("http")) {
-                    Log.d(TAG, "Downloading anchor template for $anchorId from URL...")
-                    val url = java.net.URL(base64Template)
-                    template = BitmapFactory.decodeStream(url.openStream())
-                } else {
-                    // Remove header if present "data:image/png;base64,"
-                    val cleanBase64 = if (base64Template.contains(",")) 
-                        base64Template.split(",")[1] else base64Template
-                        
-                    val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-                    template = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                }
-                
-                if (template != null) {
-                    anchorTemplates[anchorId] = template
-                } else {
-                     Log.e(TAG, "Failed to decode bitmap for anchor $anchorId")
-                     return false
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Exception decoding anchor template", e)
-                return false
-            }
-        }
-        
-        // 3. Match using ImageMatcher
-        // Optimization: Crop screen to expected area if 'x, y, w, h' are small?
-        // For now, full screen search is safer but slower.
-        
-        val result = ImageMatcher.findTemplate(screen, template!!, 0.7)
-        
-        if (result != null) {
-             // Verify Position Strictness
-             val expectedX = anchor.optDouble("x", -1.0)
-             val expectedY = anchor.optDouble("y", -1.0)
-             
-             if (expectedX >= 0 && expectedY >= 0) {
-                 val matchX = result.x
-                 val matchY = result.y
-                 val screenW = screen.width.toDouble()
-                 val screenH = screen.height.toDouble()
-                 
-                 val targetX = (expectedX / 100.0) * screenW
-                 val targetY = (expectedY / 100.0) * screenH
-                 
-                 // Tolerance: 25% of screen size (Relaxed to handle resolution drifts)
-                 val tolX = screenW * 0.25
-                 val tolY = screenH * 0.25
-                 
-                 if (kotlin.math.abs(matchX - targetX) > tolX || kotlin.math.abs(matchY - targetY) > tolY) {
-                     Log.w(TAG, "⚠️ Anchor Position Mismatch for ${anchorId}: Found($matchX, $matchY) vs Expected($targetX, $targetY)")
-                     return false
+        } else {
+             // Image Match
+             val base64Template = anchor.optString("template")
+             if (base64Template.isNotEmpty()) {
+                 val anchorId = anchor.optString("id")
+                 if (anchorId.isNotEmpty()) {
+                     var template = anchorTemplates[anchorId]
+                     if (template == null) {
+                         try {
+                              if (base64Template.startsWith("http")) {
+                                  val url = java.net.URL(base64Template)
+                                  template = BitmapFactory.decodeStream(url.openStream())
+                              } else {
+                                  val clean = if (base64Template.contains(",")) base64Template.split(",")[1] else base64Template
+                                  val decodedBytes = Base64.decode(clean, Base64.DEFAULT)
+                                  template = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                              }
+                              if (template != null) anchorTemplates[anchorId] = template
+                         } catch (e: Exception) {
+                              Log.e(TAG, "Template decode fail", e)
+                         }
+                     }
+                     
+                     if (template != null) {
+                         // Use strict position verification logic
+                         val result = ImageMatcher.findTemplate(screen, template, 0.7)
+                         if (result != null) {
+                              val expectedX = anchor.optDouble("x", -1.0)
+                              val expectedY = anchor.optDouble("y", -1.0)
+                              
+                              if (expectedX >= 0 && expectedY >= 0) {
+                                  val matchX = result.x
+                                  val matchY = result.y
+                                  val screenW = screen.width.toDouble()
+                                  val screenH = screen.height.toDouble()
+                                  
+                                  val targetX = (expectedX / 100.0) * screenW
+                                  val targetY = (expectedY / 100.0) * screenH
+                                  
+                                  val tolX = screenW * 0.25
+                                  val tolY = screenH * 0.25
+                                  
+                                  if (kotlin.math.abs(matchX - targetX) <= tolX && kotlin.math.abs(matchY - targetY) <= tolY) {
+                                      isMatch = true
+                                  } else {
+                                      Log.w(TAG, "⚠️ Pos Mismatch: Found($matchX, $matchY) vs Expected($targetX, $targetY)")
+                                  }
+                              } else {
+                                  // No position data, just matching content is enough
+                                  isMatch = true
+                              }
+                         }
+                     }
                  }
              }
-             return true
         }
-        
-        return false
+
+        // Variable Extraction
+        val variableName = anchor.optString("variableName")
+        if (isMatch && variableName.isNotEmpty() && extractedContent != null) {
+            val number = extractNumber(extractedContent)
+            if (number != null) {
+                variables[variableName] = number
+                Log.i(TAG, "💾 Variable Stored: $variableName = $number (from '$extractedContent')")
+            } else {
+                Log.w(TAG, "⚠️ Extracted text found but no numbers for var '$variableName'")
+            }
+        }
+
+        return isMatch
     }
 
     data class TransitionAction(val region: JSONObject, val targetSceneId: String)
@@ -618,7 +611,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         }
     }
 
-    private fun checkAiMatch(screen: Bitmap, anchor: JSONObject, prompt: String): Boolean {
+    private fun checkAiMatch(screen: Bitmap, anchor: JSONObject, prompt: String): Pair<Boolean, String?> {
         try {
             // 1. Crop
             val ax = anchor.optDouble("x", 0.0)
@@ -631,7 +624,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
             val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
             
-            if (w <= 0 || h <= 0) return false
+            if (w <= 0 || h <= 0) return Pair(false, null)
             
             val crop = Bitmap.createBitmap(screen, x, y, w, h)
             
@@ -648,8 +641,16 @@ class SceneGraphEngine(private val service: AutomationService) {
             conn.setRequestProperty("Content-Type", "application/json")
             conn.doOutput = true
             
+            // Handle "Force Number" flag
+            val forceNumber = anchor.optBoolean("aiForceNumber", false)
+            val fullPrompt = if (forceNumber) {
+                "$prompt. (IMPORTANT: Extract and return ONLY the single integer number found in this image. Do not include any words.)"
+            } else {
+                prompt
+            }
+
             val jsonBody = JSONObject()
-            jsonBody.put("prompt", prompt)
+            jsonBody.put("prompt", fullPrompt)
             jsonBody.put("imageBase64", base64Image)
             
             conn.outputStream.use { os ->
@@ -664,21 +665,25 @@ class SceneGraphEngine(private val service: AutomationService) {
                     val resultJson = JSONObject(response)
                     val match = resultJson.optBoolean("match")
                     val reason = resultJson.optString("reason")
+                    // If we are in extraction mode (variable set), and match is true,
+                    // we assume the 'reason' or a specific field contains the text.
+                    // Since the current API relies on LLM explanation, 'reason' usually contains the finding.
+                    
                     Log.i(TAG, "🤖 AI Check Result: $match ($reason)")
-                    return match
+                    return Pair(match, reason)
                 }
             } else {
                 Log.e(TAG, "AI Check Failed: HTTP $responseCode")
-                return false
+                return Pair(false, null)
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "AI Check Error", e)
-            return false
+            return Pair(false, null)
         }
     }
 
-    private fun checkTextMatch(screen: Bitmap, anchor: JSONObject, targetText: String): Boolean {
+    private fun checkTextMatch(screen: Bitmap, anchor: JSONObject, targetText: String): Pair<Boolean, String?> {
         try {
             val ax = anchor.optDouble("x", 0.0)
             val ay = anchor.optDouble("y", 0.0)
@@ -690,7 +695,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
             val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
             
-            if (w <= 0 || h <= 0) return false
+            if (w <= 0 || h <= 0) return Pair(false, null)
             
             val crop = Bitmap.createBitmap(screen, x, y, w, h)
             val image = InputImage.fromBitmap(crop, 0)
@@ -700,23 +705,30 @@ class SceneGraphEngine(private val service: AutomationService) {
             val result = Tasks.await(task) 
             
             val foundText = result.text.replace("\n", "").trim()
-            // Log.v(TAG, "🔤 OCR Scanned: '$foundText' (Expected: '$targetText')")
+            
+            // Extraction Mode: If targetText is empty, we match anything found
+            if (targetText.isEmpty()) {
+                 if (foundText.isNotEmpty()) {
+                     Log.v(TAG, "🔤 OCR Extraction Mode: '$foundText'")
+                     return Pair(true, foundText)
+                 }
+                 return Pair(false, null)
+            }
             
             if (foundText.contains(targetText, ignoreCase = true)) {
                 Log.d(TAG, "🔤 OCR Match Success! Found: '$foundText'")
-                return true
+                return Pair(true, foundText)
             }
-            return false
+            return Pair(false, null)
             
         } catch (e: Exception) {
             val msg = e.message ?: ""
-            // Handle ML Kit downloading state gracefully
             if (msg.contains("Waiting for the text optional module")) {
-                 Log.w(TAG, "⏳ OCR 中文模型下載中，請保持網路連線並稍候... (System is downloading ML Kit Model)")
+                 Log.w(TAG, "⏳ OCR 中文模型下載中... (Downloading ML Kit Model)")
             } else {
                  Log.e(TAG, "OCR Check Failed", e)
             }
-            return false
+            return Pair(false, null)
         }
     }
 
