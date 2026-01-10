@@ -493,7 +493,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         val bestRegion = candidates[0]
         val target = bestRegion.optString("target")
         
-        Log.i(TAG, "🤖 Decided to click '${bestRegion.optString("label")}' (Priority: ${bestRegion.optJSONObject("schedule")?.optInt("priority") ?: 5})")
+        Log.i(TAG, "🤖 Decided to Execute '${bestRegion.optString("label")}' (Priority: ${bestRegion.optJSONObject("schedule")?.optInt("priority") ?: 5})")
         
         // Assume target is sceneId if null/empty (Self Loop) for actions like "Click Button"
         // But logic requires valid target? If target is null, we stay in same scene?
