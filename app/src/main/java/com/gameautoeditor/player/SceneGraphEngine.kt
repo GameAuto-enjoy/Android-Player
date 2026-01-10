@@ -153,12 +153,12 @@ class SceneGraphEngine(private val service: AutomationService) {
                         Thread.sleep(waitTime)
                         Log.i(TAG, "⏰ 睡眠結束，繼續執行") 
                     } else {
-                    } else {
                         // No action available in current scene
-                        Log.d(TAG, "⚠️ 在場景 '$currentSceneId' 中無可執行動作")
+                        val safeCurrentId = currentSceneId ?: ""
+                        Log.d(TAG, "⚠️ 在場景 '$safeCurrentId' 中無可執行動作")
                         
                         // Check if we're NOT already at Root
-                        val currentNode = getNodeById(currentSceneId)
+                        val currentNode = getNodeById(safeCurrentId)
                         val isCurrentRoot = currentNode?.optJSONObject("data")?.optBoolean("isRoot") == true
                         
                         if (!isCurrentRoot) {
