@@ -149,8 +149,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                         
                         // Wait for transition (Dynamic)
                         val waitTime = action.region.optLong("wait_after", 2000L)
-                        Log.d(TAG, "⏳ Waiting ${waitTime}ms...")
-                        Thread.sleep(waitTime) 
+                        Log.i(TAG, "⏳ Sleeping ${waitTime}ms (Wait After)...")
+                        Thread.sleep(waitTime)
+                        Log.i(TAG, "⏰ Woke up from sleep") 
                     } else {
                         // No action available in current scene
                         Log.d(TAG, "⚠️ No runnable actions in '$currentSceneId'")
