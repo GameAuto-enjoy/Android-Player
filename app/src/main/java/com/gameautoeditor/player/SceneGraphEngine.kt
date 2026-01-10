@@ -97,7 +97,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                              Thread.sleep(2000)
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "🛡️ Guardian: Restore Failed", e)
+                        Log.e(TAG, "🛡️ 保護機制: 恢復失敗", e)
                         Thread.sleep(2000)
                     }
                     
@@ -113,7 +113,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     continue
                 }
 
-                Log.d(TAG, "📸 Screen Captured: ${screen.width}x${screen.height}")
+                Log.d(TAG, "📸 已截圖: ${screen.width}x${screen.height}")
 
                 // 2. Identify Current Scene vs Expected Scene
                 // For now, we assume we are at 'currentSceneId' and verify it, 
@@ -134,9 +134,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                 
                 if (detectedSceneId != null) {
                     if (detectedSceneId != currentSceneId) {
-                         Log.i(TAG, "📍 Context Switch: $currentSceneId -> $detectedSceneId")
+                         Log.i(TAG, "📍 場景切換: $currentSceneId -> $detectedSceneId")
                     } else {
-                         Log.i(TAG, "📍 Confirmed Scene: $detectedSceneId")
+                         Log.i(TAG, "📍 確認場景: $detectedSceneId")
                     }
                     currentSceneId = detectedSceneId
                     
@@ -149,12 +149,13 @@ class SceneGraphEngine(private val service: AutomationService) {
                         
                         // Wait for transition (Dynamic)
                         val waitTime = action.region.optLong("wait_after", 2000L)
-                        Log.i(TAG, "⏳ Sleeping ${waitTime}ms (Wait After)...")
+                        Log.i(TAG, "⏳ [執行後] 睡眠 ${waitTime}ms...")
                         Thread.sleep(waitTime)
-                        Log.i(TAG, "⏰ Woke up from sleep") 
+                        Log.i(TAG, "⏰ 睡眠結束，繼續執行") 
+                    } else {
                     } else {
                         // No action available in current scene
-                        Log.d(TAG, "⚠️ No runnable actions in '$currentSceneId'")
+                        Log.d(TAG, "⚠️ 在場景 '$currentSceneId' 中無可執行動作")
                         
                         // Check if we're NOT already at Root
                         val currentNode = getNodeById(currentSceneId)
@@ -174,19 +175,19 @@ class SceneGraphEngine(private val service: AutomationService) {
                             }
                         } else {
                             // Already at Root but no action available
-                            Log.d(TAG, "⏸️ At Root but no action meets conditions. Waiting...")
+                            Log.d(TAG, "⏸️ 已在主場景但條件不符，等待中...")
                             Thread.sleep(2000)
                         }
                     }
                 } else {
-                    Log.d(TAG, "❓ Unknown Scene (No matching anchors found)")
+                    Log.d(TAG, "❓ 未知場景 (無匹配錨點)")
                     Thread.sleep(1000)
                 }
 
                 screen.recycle()
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error in loop: ${e.message}", e)
+                Log.e(TAG, "核心迴圈錯誤: ${e.message}", e)
                 Thread.sleep(2000)
             }
         }
@@ -494,7 +495,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         val bestRegion = candidates[0]
         val target = bestRegion.optString("target")
         
-        Log.i(TAG, "🤖 Decided to Execute '${bestRegion.optString("label")}' (Priority: ${bestRegion.optJSONObject("schedule")?.optInt("priority") ?: 5})")
+        Log.i(TAG, "🤖 決定執行 '${bestRegion.optString("label")}' (優先級: ${bestRegion.optJSONObject("schedule")?.optInt("priority") ?: 5})")
         
         // Assume target is sceneId if null/empty (Self Loop) for actions like "Click Button"
         // But logic requires valid target? If target is null, we stay in same scene?
@@ -509,7 +510,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         // Wait BEFORE Execution (Pre-Delay)
         val waitBefore = r.optLong("wait_before", 0L)
         if (waitBefore > 0) {
-            Log.i(TAG, "⏳ Pre-Delay Sleeping ${waitBefore}ms...")
+            Log.i(TAG, "⏳ [執行前] 睡眠 ${waitBefore}ms...")
             Thread.sleep(waitBefore)
         }
         
@@ -522,7 +523,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                 val currentVal = variables[variable] ?: 0
                 val newVal = (currentVal - 1).coerceAtLeast(0)
                 variables[variable] = newVal
-                Log.i(TAG, "📉 Side Effect: $variable = $newVal (-1)")
+                Log.i(TAG, "📉 觸發副作用: $variable = $newVal (遞減)")
             }
         }
         
@@ -558,13 +559,13 @@ class SceneGraphEngine(private val service: AutomationService) {
                     if (intent != null) {
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         service.startActivity(intent)
-                        Log.i(TAG, "🚀 Launched App: $pkg")
+                        Log.i(TAG, "🚀 已啟動 APP: $pkg")
                     } else {
-                        Log.w(TAG, "⚠️ App not found: $pkg")
-                        service.showToast("App not found: $pkg")
+                        Log.w(TAG, "⚠️ 找不到 APP: $pkg")
+                        service.showToast("找不到 APP: $pkg")
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Failed to launch app", e)
+                    Log.e(TAG, "❌ 啟動 APP 失敗", e)
                 }
             } else {
                  service.showToast("⚠️ 未知目標APP (Unknown Target)")
@@ -574,7 +575,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         if (type == "BACK_KEY") {
              service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
-             Log.i(TAG, "🔙 Performed Global BACK Action")
+             Log.i(TAG, "🔙 已執行全域返回 (BACK)")
              return
         }
         
@@ -588,12 +589,12 @@ class SceneGraphEngine(private val service: AutomationService) {
         val centerX = (metrics.widthPixels * (xPercent + wPercent / 2) / 100).toFloat()
         val centerY = (metrics.heightPixels * (yPercent + hPercent / 2) / 100).toFloat()
 
-        Log.i(TAG, "⚡ Performing $type at ($centerX, $centerY)")
+        Log.i(TAG, "⚡ 正在執行 $type 於 ($centerX, $centerY)")
 
         // Set Expected Next Scene (Optimistic)
         if (action.targetSceneId.isNotEmpty() && action.targetSceneId != "null" && action.targetSceneId != "root") {
              expectedNextSceneId = action.targetSceneId
-             Log.d(TAG, "🔭 Setting Expected Next Scene: $expectedNextSceneId")
+             Log.d(TAG, "🔭 設定預期下一場景: $expectedNextSceneId")
         }
 
         handler.post {
@@ -633,7 +634,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                 }
                 "WAIT" -> {
                     // No gesture, just wait (logic handled in loop delay)
-                    Log.i(TAG, "⏳ Action is WAIT only")
+                    Log.i(TAG, "⏳ 動作類型為等待 (WAIT)，不執行點擊")
                     return@post
                 }
             }

@@ -20,7 +20,7 @@ class AutomationService : AccessibilityService() {
     private val overlayReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
             if (intent?.action == "com.gameautoeditor.SHOW_OVERLAY") {
-                Log.i(TAG, "📢 Broadcast Received: SHOW_OVERLAY")
+                Log.i(TAG, "📢 收到廣播: SHOW_OVERLAY")
                 
                 if (floatingView == null) {
                     initFloatingWindow()
@@ -35,7 +35,7 @@ class AutomationService : AccessibilityService() {
                             showToast("Controls Refreshed")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error showing overlay", e)
+                        Log.e(TAG, "顯示懸浮窗錯誤", e)
                         initFloatingWindow()
                     }
                 }
@@ -212,7 +212,7 @@ class AutomationService : AccessibilityService() {
             Log.i(TAG, "懸浮窗已添加")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create floating window: ${e.message}")
+            Log.e(TAG, "建立懸浮窗失敗: ${e.message}")
         }
     }
     
@@ -220,7 +220,7 @@ class AutomationService : AccessibilityService() {
         scriptEngine.stop()
         sceneGraphEngine.stop()
         updateStatus(null) // Hide status
-        Log.i(TAG, "Execution stopped by user")
+        Log.i(TAG, "使用者已停止執行")
     }
 
     private fun loadAndExecuteScript() {
@@ -266,7 +266,7 @@ class AutomationService : AccessibilityService() {
                     "https://game-auto-editor.vercel.app/api/get-script?id=$scriptIdOrUrl"
                 }
 
-                Log.d(TAG, "Fetching script from: $urlString")
+                Log.d(TAG, "正在下載腳本: $urlString")
                 val connection = java.net.URL(urlString).openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 10000
@@ -284,7 +284,7 @@ class AutomationService : AccessibilityService() {
                             
                         // Unified Engine Routing: ScriptEngine now handles BOTH Graph and Linear formats.
                         // We use ScriptEngine by default to avoid the forced-screenshot loop of the old SceneGraphEngine.
-                        Log.i(TAG, "🚀 Pass to Unified ScriptEngine")
+                        Log.i(TAG, "🚀 轉交給統一腳本引擎 (ScriptEngine)")
                         scriptEngine.executeScript(scriptJson)
                         
                         /* Legacy Routing (Disabled for stability)
@@ -358,7 +358,7 @@ class AutomationService : AccessibilityService() {
                 lastForegroundPackage = pkg
                 
                 if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-                    Log.v(TAG, "📱 Foreground App Changed: $pkg")
+                    Log.v(TAG, "📱 前台應用變更: $pkg")
                 }
             }
         }
@@ -388,7 +388,7 @@ class AutomationService : AccessibilityService() {
         }
 
         scriptOriginPackage = lastForegroundPackage
-        Log.i(TAG, "🔒 Script Origin Locked: $scriptOriginPackage")
+        Log.i(TAG, "🔒 已鎖定原始遊戲包名: $scriptOriginPackage")
         if (scriptOriginPackage == null) {
             showToast("⚠️ 無法偵測原始遊戲，請手動確認")
         } else {
