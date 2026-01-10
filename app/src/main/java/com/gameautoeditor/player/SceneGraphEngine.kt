@@ -505,6 +505,13 @@ class SceneGraphEngine(private val service: AutomationService) {
 
     private fun performAction(action: TransitionAction) {
         val r = action.region
+
+        // Wait BEFORE Execution (Pre-Delay)
+        val waitBefore = r.optLong("wait_before", 0L)
+        if (waitBefore > 0) {
+            Log.i(TAG, "⏳ Pre-Delay Sleeping ${waitBefore}ms...")
+            Thread.sleep(waitBefore)
+        }
         
         // Execute Side Effects (Smart Loop)
         val sideEffect = r.optJSONObject("sideEffect")
