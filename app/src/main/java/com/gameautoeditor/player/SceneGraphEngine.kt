@@ -215,9 +215,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                 val mode = schedule.optString("mode", "NONE")
                 
                 if (mode == "INTERVAL") {
-                    val intervalMin = schedule.optInt("interval", 0)
+                    val intervalSec = schedule.optInt("interval", 0)
                     val now = System.currentTimeMillis()
-                    if (now - history.lastRunTime < intervalMin * 60 * 1000L) isRunnable = false
+                    if (now - history.lastRunTime < intervalSec * 1000L) isRunnable = false
                 } else if (mode == "COUNT") {
                     val max = schedule.optInt("maxTimes", 0)
                     if (max > 0 && history.runCount >= max) isRunnable = false
