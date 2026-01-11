@@ -1,0 +1,323 @@
+package com.gameautoeditor.player
+
+import android.graphics.Bitmap
+import android.util.Log
+import org.json.JSONObject
+import android.graphics.BitmapFactory
+import android.util.Base64
+
+class PerceptionSystem(private val service: AutomationService) {
+    private val TAG = "GameAuto.Eye"
+    
+    // Cache for Decoded Template Bitmaps (Config Layer asset)
+    private val templateCache = mutableMapOf<String, Bitmap>()
+
+    /**
+     * 感知 (Eyes): 檢查當前畫面是否符合某個 State (Scene Node) 的特徵
+     */
+    fun isStateActive(screen: Bitmap, stateNode: JSONObject, variables: MutableMap<String, Int>): Boolean {
+        val anchors = stateNode.optJSONObject("data")?.optJSONArray("anchors")
+        if (anchors == null || anchors.length() == 0) return false
+
+        var matchCount = 0
+        val totalAnchors = anchors.length()
+
+        for (i in 0 until totalAnchors) {
+            val anchor = anchors.getJSONObject(i)
+            // Use specialized check that can update variables
+            if (checkAnchor(screen, anchor, variables)) {
+                matchCount++
+            }
+        }
+
+        // Strict: All anchors must match
+        return matchCount == totalAnchors
+    }
+
+    fun clearCache() {
+        templateCache.clear()
+        // ImageMatcher has its own logic, but we might want to clear local cache
+    }
+
+    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>): Boolean {
+        val matchType = anchor.optString("matchType", "image")
+        val variableName = anchor.optString("variableName")
+        
+        val result = when (matchType.lowercase()) {
+            "color" -> Pair(checkColor(screen, anchor), null)
+            "text" -> checkText(screen, anchor)
+            "ai" -> checkAi(screen, anchor)
+            else -> Pair(checkImage(screen, anchor), null)
+        }
+
+        // If defined, EXTRACT value into variable
+        if (result.first && variableName.isNotEmpty() && result.second != null) {
+            try {
+                // Try to parse as integer for now (variables map is <String, Int>)
+                // Only digits
+                val cleanVal = Regex("[^0-9]").replace(result.second!!, "")
+                if (cleanVal.isNotEmpty()) {
+                    val intVal = cleanVal.toInt()
+                    variables[variableName] = intVal
+                    Log.i(TAG, "📥 Extracted Variable [$variableName] = $intVal")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse extracted value '${result.second}' as Int")
+            }
+        }
+
+        return result.first
+    }
+
+    // --- Specific Perception Methods ---
+
+    private fun checkImage(screen: Bitmap, anchor: JSONObject): Boolean {
+        val base64Template = anchor.optString("template")
+        if (base64Template.isEmpty()) return false
+
+        val anchorId = anchor.optString("id")
+        var template = templateCache[anchorId]
+        
+        if (template == null) {
+            template = decodeTemplate(base64Template)
+            if (template != null && anchorId.isNotEmpty()) {
+                templateCache[anchorId] = template
+            }
+        }
+
+        if (template == null) return false
+
+        // Use ImageMatcher (OpenCV)
+        val result = ImageMatcher.findTemplate(screen, template, 0.7) ?: return false
+        
+        // Verify Position
+        val expectedX = anchor.optDouble("x", -1.0)
+        val expectedY = anchor.optDouble("y", -1.0)
+        
+        if (expectedX >= 0 && expectedY >= 0) {
+            val metrics = service.resources.displayMetrics
+            val targetX = (expectedX / 100.0) * metrics.widthPixels
+            val targetY = (expectedY / 100.0) * metrics.heightPixels
+            
+            // Tolerance: 25% of screen (Relaxed) or strict?
+            // "Perception" should be accurate.
+            val tolX = metrics.widthPixels * 0.1
+            val tolY = metrics.heightPixels * 0.1
+            
+            if (kotlin.math.abs(result.x - targetX) > tolX || kotlin.math.abs(result.y - targetY) > tolY) {
+                return false
+            }
+        }
+        
+        return true
+    }
+
+    private fun decodeTemplate(base64: String): Bitmap? {
+        return try {
+            if (base64.startsWith("http")) {
+                 ImageMatcher.downloadBitmap(base64)
+            } else {
+                val clean = if (base64.contains(",")) base64.split(",")[1] else base64
+                val decodedBytes = Base64.decode(clean, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Template Decode Fail", e)
+            null
+        }
+    }
+
+    private fun checkColor(screen: Bitmap, anchor: JSONObject): Boolean {
+        // ... (Move logic from SceneGraphEngine)
+        // Simplified for brevity, needs actual logic
+        val targetColor = anchor.optString("targetColor")
+        if (targetColor.isEmpty()) return false
+        
+        try {
+            val color = android.graphics.Color.parseColor(targetColor)
+            val tr = android.graphics.Color.red(color)
+            val tg = android.graphics.Color.green(color)
+            val tb = android.graphics.Color.blue(color)
+
+            val xPercent = anchor.optDouble("x", 0.0)
+            val yPercent = anchor.optDouble("y", 0.0)
+            val wPercent = anchor.optDouble("w", 0.0)
+            val hPercent = anchor.optDouble("h", 0.0)
+             
+            val w = (wPercent / 100.0 * screen.width).toInt()
+            val h = (hPercent / 100.0 * screen.height).toInt()
+            val startX = (xPercent / 100.0 * screen.width).toInt()
+            val startY = (yPercent / 100.0 * screen.height).toInt()
+
+            if (w <= 0 || h <= 0) return false
+
+            // Sample center
+            val cx = startX + w/2
+            val cy = startY + h/2
+            if (cx >= screen.width || cy >= screen.height) return false
+
+            val pixel = screen.getPixel(cx, cy)
+            val r = android.graphics.Color.red(pixel)
+            val g = android.graphics.Color.green(pixel)
+            val b = android.graphics.Color.blue(pixel)
+
+            // Euclidean distance
+            val dist = kotlin.math.sqrt(
+                ((r-tr)*(r-tr) + (g-tg)*(g-tg) + (b-tb)*(b-tb)).toDouble()
+            )
+            return dist < 50.0 // Tolerance
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    private fun checkText(screen: Bitmap, anchor: JSONObject): Pair<Boolean, String?> {
+        val targetText = anchor.optString("targetText")
+        // If targetText is empty, we might be in "Extract Mode", but checks usually imply matching.
+        // If empty, maybe returns true? For now, assume we need non-empty target for a check.
+        if (targetText.isEmpty()) return Pair(false, null)
+
+        // 1. Crop Region
+        val region = getRegionBitmap(screen, anchor) ?: return Pair(false, null)
+
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var isMatch = false
+        var recognizedText = ""
+
+        try {
+            val image = com.google.mlkit.vision.common.InputImage.fromBitmap(region, 0)
+            val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(
+                com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions.Builder().build()
+            )
+
+            recognizer.process(image)
+                .addOnSuccessListener { visionText ->
+                    recognizedText = visionText.text.replace("\n", "").trim()
+                    // Simple Contains Check
+                    if (recognizedText.contains(targetText, ignoreCase = true)) {
+                        isMatch = true
+                    }
+                    latch.countDown()
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "OCR Fail", e)
+                    latch.countDown()
+                }
+
+            // Wait max 3 seconds
+            latch.await(3, java.util.concurrent.TimeUnit.SECONDS)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "OCR Error", e)
+        }
+
+        return Pair(isMatch, recognizedText)
+    }
+
+    private fun checkAi(screen: Bitmap, anchor: JSONObject): Pair<Boolean, String?> {
+        val prompt = anchor.optString("targetPrompt")
+        if (prompt.isEmpty()) return Pair(false, null)
+
+        // 1. Crop Region
+        val region = getRegionBitmap(screen, anchor) ?: return Pair(false, null)
+
+        // 2. Base64
+        val base64 = bitmapToBase64(region)
+        val urlStr = "https://game-auto-editor.vercel.app/api/ai-check" // Should use config or env
+
+        var isMatch = false
+        var reason: String? = null
+
+        try {
+            val url = java.net.URL(urlStr)
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.connectTimeout = 5000
+            conn.readTimeout = 10000
+
+            val jsonBody = JSONObject()
+            jsonBody.put("prompt", prompt)
+            jsonBody.put("imageBase64", base64)
+            // If variableName exists, use 'extract' mode
+            if (anchor.optString("variableName").isNotEmpty()) {
+                jsonBody.put("mode", "extract") 
+            }
+
+            val os = java.io.OutputStreamWriter(conn.outputStream)
+            os.write(jsonBody.toString())
+            os.flush()
+            os.close()
+
+            val responseCode = conn.responseCode
+            if (responseCode == 200) {
+                val br = java.io.BufferedReader(java.io.InputStreamReader(conn.inputStream))
+                val sb = StringBuilder()
+                var line: String?
+                while (br.readLine().also { line = it } != null) {
+                    sb.append(line)
+                }
+                br.close()
+
+                val respJson = JSONObject(sb.toString())
+
+                
+                // Flexible parsing: value (extract) or match (check)
+                if (respJson.has("value")) {
+                     val valObj = respJson.get("value")
+                     reason = valObj.toString()
+                     isMatch = true // If value returned, assume matched/found
+                } else {
+                     isMatch = respJson.optBoolean("match", false)
+                     reason = respJson.optString("reason", "")
+                }
+            } else {
+                Log.e(TAG, "AI API Error: $responseCode")
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "AI Check Error", e)
+        }
+        
+        // Log explanation
+        if (reason != null && reason.isNotEmpty()) {
+             Log.i(TAG, "🧠 AI Reason: $reason")
+        }
+
+        return Pair(isMatch, reason)
+    }
+
+    // Helper: Crop Bitmap based on Anchor definition
+    private fun getRegionBitmap(screen: Bitmap, anchor: JSONObject): Bitmap? {
+        val xPercent = anchor.optDouble("x", 0.0)
+        val yPercent = anchor.optDouble("y", 0.0)
+        val wPercent = anchor.optDouble("w", 0.0)
+        val hPercent = anchor.optDouble("h", 0.0)
+
+        // Safety: If w/h is 0, use full screen? No, probably a mistake.
+        if (wPercent <= 0 || hPercent <= 0) return null
+
+        val x = (xPercent / 100.0 * screen.width).toInt()
+        val y = (yPercent / 100.0 * screen.height).toInt()
+        val w = (wPercent / 100.0 * screen.width).toInt()
+        val h = (hPercent / 100.0 * screen.height).toInt()
+
+        // Boundary Check
+        val safeX = x.coerceIn(0, screen.width - 1)
+        val safeY = y.coerceIn(0, screen.height - 1)
+        val safeW = w.coerceAtMost(screen.width - safeX)
+        val safeH = h.coerceAtMost(screen.height - safeY)
+
+        if (safeW <= 0 || safeH <= 0) return null
+
+        return Bitmap.createBitmap(screen, safeX, safeY, safeW, safeH)
+    }
+
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = java.io.ByteArrayOutputStream()
+        // Quality 70 is good trade-off
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+        return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+    }
+}

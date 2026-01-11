@@ -1,30 +1,23 @@
 package com.gameautoeditor.player
 
-import android.accessibilityservice.GestureDescription
+import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
-import android.util.Base64
 import android.util.Log
-import org.json.JSONArray
 import org.json.JSONObject
-import android.content.Intent
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
-import com.google.mlkit.vision.common.InputImage
-import com.google.android.gms.tasks.Tasks
 
 class SceneGraphEngine(private val service: AutomationService) {
-    private val TAG = "GameAuto"
-    private val anchorTemplates = mutableMapOf<String, Bitmap>()
+    private val TAG = "GameAuto.FSM"
     private var graphData: JSONObject? = null
     private var isRunning = false
-    private val handler = Handler(Looper.getMainLooper())
     private var workerThread: Thread? = null
 
-    // Scheduling State
+    // Systems
+    private val perceptionSystem = PerceptionSystem(service)
+    private val actionSystem = ActionSystem(service)
+
+    // State
     data class ExecutionData(var lastRunTime: Long = 0, var runCount: Int = 0)
     private val executionHistory = mutableMapOf<String, ExecutionData>()
     private val variables = mutableMapOf<String, Int>()
@@ -32,164 +25,245 @@ class SceneGraphEngine(private val service: AutomationService) {
     fun start(jsonString: String) {
         if (isRunning) return
         isRunning = true
-        
         try {
             graphData = JSONObject(jsonString)
-            Log.i(TAG, "🤖 SceneGraphEngine Started")
             
-            // Start worker thread
-            workerThread = Thread {
-                runLoop()
+            // Initialize Variables from Global Settings
+            variables.clear()
+            val settingsVars = graphData?.optJSONObject("metadata")
+                ?.optJSONObject("settings")
+                ?.optJSONObject("variables")
+            
+            if (settingsVars != null) {
+                val keys = settingsVars.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    variables[key] = settingsVars.optInt(key, 0)
+                }
             }
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) Started. Vars: $variables")
+
+            workerThread = Thread { runLoop() }
             workerThread?.start()
-            
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse script: ${e.message}")
+            Log.e(TAG, "Failed to parse script", e)
             isRunning = false
         }
     }
 
     fun stop() {
         isRunning = false
-        anchorTemplates.clear() // Clear cache
-        executionHistory.clear() // Clear history
-        Log.i(TAG, "⏹️ SceneGraphEngine Stopped")
+        perceptionSystem.clearCache()
+        executionHistory.clear()
+        Log.i(TAG, "⏹️ Stopped")
     }
 
     private fun runLoop() {
-        Log.i(TAG, "Worker Thread Started")
-        
-        // Initial delay
         Thread.sleep(1000)
-
-        // Find ROOT node
-        val rootNodeId = findRootNodeId()
-        if (rootNodeId == null) {
-            Log.e(TAG, "No ROOT node found!")
+        var currentSceneId = findRootNodeId()
+        
+        if (currentSceneId == null) {
+            Log.e(TAG, "❌ No Root Node found in script")
+            service.showToast("Script Error: No Start Node")
             isRunning = false
             return
         }
 
-        var currentSceneId = rootNodeId
-
         while (isRunning) {
             try {
-                // 🛡️ App Guardian: Ensure we are in the correct App
-                val originPkg = service.getOriginPackageName()
-                val currentPkg = service.getFgPackageName()
-                
-                // Only enforce if both are known and different, and origin is NOT null
-                // Also ignore if current is matching our service (don't kill ourself)
-                if (originPkg != null && currentPkg != null && originPkg != currentPkg && currentPkg != service.packageName) {
-                    Log.w(TAG, "🛡️ Guardian: App Drift Detected! ($currentPkg != $originPkg)")
-                    
-                    try {
-                        Log.i(TAG, "🛡️ Guardian: Restoring $originPkg...")
-                        val intent = service.packageManager.getLaunchIntentForPackage(originPkg)
-                        if (intent != null) {
-                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                             service.startActivity(intent)
-                             // Wait strictly
-                             Thread.sleep(3000)
-                        } else {
-                             Log.w(TAG, "🛡️ Guardian: No Launch Intent found for $originPkg")
-                             service.showToast("⚠️ 無法自動返回，請手動切回遊戲")
-                             Thread.sleep(2000)
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "🛡️ 保護機制: 恢復失敗", e)
-                        Thread.sleep(2000)
-                    }
-                    
-                    // ⛔ CRITICAL: Always skip execution if not in origin app
+                // Guardian Logic
+                if (!checkAppFocus()) {
+                    Thread.sleep(1000)
                     continue
                 }
 
-                // 1. Capture Screen
+                // 1. Perception (Eye)
                 val screen = service.captureScreenSync()
                 if (screen == null) {
-                    Log.w(TAG, "Capture failed, retrying...")
-                    Thread.sleep(1000)
+                    Thread.sleep(500)
                     continue
                 }
 
-                Log.d(TAG, "📸 已截圖: ${screen.width}x${screen.height}")
-
-                // 2. Identify Current Scene vs Expected Scene
-                // For now, we assume we are at 'currentSceneId' and verify it, 
-                // OR we check ALL scenes to find where we are (Global Localization).
+                // Identify State (Where am I?)
+                // Pass 'variables' to allow Perception to update them (Extraction)
+                val detectedId = identifyScene(screen, currentSceneId)
                 
-                var detectedSceneId = identifyScene(screen)
-                
-                // Fallback: If verification failed, but our 'currentSceneId' has NO anchors defined,
-                // we assume we are there (Blind Trust). This allows "Blind Steps" or "Root with no checks".
-                if (detectedSceneId == null && currentSceneId != null) {
-                     val currentNode = getNodeById(currentSceneId)
-                     val anchors = currentNode?.optJSONObject("data")?.optJSONArray("anchors")
+                // Blind Trust fallback logic
+                var activeId = detectedId
+                if (activeId == null && currentSceneId != null) {
+                     val node = getNodeById(currentSceneId!!)
+                     val anchors = node?.optJSONObject("data")?.optJSONArray("anchors")
+                     // If current state has NO anchors defined, we assume strict adherence (Blind State)
                      if (anchors == null || anchors.length() == 0) {
-                         Log.w(TAG, "⚠️ Current scene '$currentSceneId' has no anchors. Assuming we are there (Blind Trust).")
-                         detectedSceneId = currentSceneId
+                         activeId = currentSceneId
                      }
                 }
-                
-                if (detectedSceneId != null) {
-                    if (detectedSceneId != currentSceneId) {
-                         Log.i(TAG, "📍 場景切換: $currentSceneId -> $detectedSceneId")
+
+                if (activeId != null) {
+                    if (activeId != currentSceneId) {
+                         Log.i(TAG, "📍 State Transition: $currentSceneId -> $activeId")
+                         currentSceneId = activeId
                     } else {
-                         Log.i(TAG, "📍 確認場景: $detectedSceneId")
+                         // Log.v(TAG, "📍 In State: $activeId")
                     }
-                    currentSceneId = detectedSceneId
-                    
-                    // 3. Decide Next Action (Regions)
-                    val action = decideNextAction(currentSceneId)
+
+                    // 2. Decision (Brain)
+                    val action = decideNextAction(activeId!!)
                     
                     if (action != null) {
-                        // 4. Perform Action
-                        performAction(action)
+                        // 3. Action (Hand)
+                        val waitBefore = action.region.optLong("wait_before", 0L)
+                        if (waitBefore > 0) Thread.sleep(waitBefore)
+
+                        actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region)
                         
-                        // Wait for transition (Dynamic)
-                        val waitTime = action.region.optLong("wait_after", 2000L)
-                        Log.i(TAG, "⏳ [執行後] 睡眠 ${waitTime}ms...")
-                        Thread.sleep(waitTime)
-                        Log.i(TAG, "⏰ 睡眠結束，繼續執行") 
+                        applySideEffects(action.region)
+                        updateHistory(action.region)
+                        
+                        val waitAfter = action.region.optLong("wait_after", 1000L)
+                        Thread.sleep(waitAfter)
                     } else {
-                        // No action available in current scene
-                        val safeCurrentId = currentSceneId ?: ""
-                        Log.d(TAG, "⚠️ 在場景 '$safeCurrentId' 中無可執行動作")
-                        
-                        // Check if we're NOT already at Root
-                        val currentNode = getNodeById(safeCurrentId)
-                        val isCurrentRoot = currentNode?.optJSONObject("data")?.optBoolean("isRoot") == true
-                        
-                        if (!isCurrentRoot) {
-                            // Return to Root for re-evaluation
-                            val rootId = findRootNodeId()
-                            if (rootId != null && rootId != currentSceneId) {
-                                Log.i(TAG, "🔄 Auto-Return to Root: $currentSceneId -> $rootId")
-                                currentSceneId = rootId
-                                // Give a short delay before re-evaluation
-                                Thread.sleep(500)
-                            } else {
-                                Log.w(TAG, "⚠️ No Root scene found or already at Root. Waiting...")
-                                Thread.sleep(2000)
-                            }
-                        } else {
-                            // Already at Root but no action available
-                            Log.d(TAG, "⏸️ 已在主場景但條件不符，等待中...")
-                            Thread.sleep(2000)
-                        }
+                         // Idle in state (Waiting for cooldowns or trigger)
+                         Thread.sleep(500)
                     }
                 } else {
-                    Log.d(TAG, "❓ 未知場景 (無匹配錨點)")
-                    Thread.sleep(1000)
+                    Log.d(TAG, "❓ Lost State (No Match). Waiting...")
+                    Thread.sleep(500)
                 }
-
+                
                 screen.recycle()
-
             } catch (e: Exception) {
-                Log.e(TAG, "核心迴圈錯誤: ${e.message}", e)
-                Thread.sleep(2000)
+                Log.e(TAG, "Loop Error", e)
+                Thread.sleep(1000)
             }
+        }
+    }
+    
+    // --- Helper Methods ---
+
+    private fun checkAppFocus(): Boolean {
+        val originPkg = service.getOriginPackageName()
+        val currentPkg = service.getFgPackageName()
+        
+        if (originPkg != null && currentPkg != null && originPkg != currentPkg && currentPkg != service.packageName) {
+            Log.w(TAG, "🛡️ App Drift: $currentPkg != $originPkg. Attempting restore...")
+            try {
+                val intent = service.packageManager.getLaunchIntentForPackage(originPkg)
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    service.startActivity(intent)
+                    Thread.sleep(3000)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Restore Failed", e)
+            }
+            return false
+        }
+        return true
+    }
+
+    private fun identifyScene(screen: Bitmap, currentId: String?): String? {
+        val nodes = graphData?.optJSONArray("nodes") ?: return null
+        
+        // Priority 1: Check Global scenes (High Priority Interrupts)
+        for (i in 0 until nodes.length()) {
+            val node = nodes.getJSONObject(i)
+            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
+                if (perceptionSystem.isStateActive(screen, node, variables)) return node.getString("id")
+            }
+        }
+        
+        // Priority 2: Check Current Scene (Stability Bias)
+        if (currentId != null) {
+             val currNode = getNodeById(currentId)
+             if (currNode != null && perceptionSystem.isStateActive(screen, currNode, variables)) return currentId
+        }
+        
+        // Priority 3: Check Others
+        for (i in 0 until nodes.length()) {
+            val node = nodes.getJSONObject(i)
+            val id = node.getString("id")
+            if (id == currentId) continue
+            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue // Already checked
+            
+            if (perceptionSystem.isStateActive(screen, node, variables)) return id
+        }
+        
+        return null
+    }
+
+    data class TransitionAction(val region: JSONObject, val targetSceneId: String)
+
+    private fun decideNextAction(sceneId: String): TransitionAction? {
+        val currentNode = getNodeById(sceneId) ?: return null
+        val regions = currentNode.optJSONObject("data")?.optJSONArray("regions")
+        if (regions == null || regions.length() == 0) return null
+        
+        val candidates = mutableListOf<JSONObject>()
+        
+        for (i in 0 until regions.length()) {
+            val r = regions.getJSONObject(i)
+            if (!r.optBoolean("enabled", true)) continue
+            
+            var isRunnable = true
+            
+            // Schedule Checks
+            val schedule = r.optJSONObject("schedule")
+            val id = r.optString("id")
+            if (schedule != null && id.isNotEmpty()) {
+                val history = executionHistory.getOrPut(id) { ExecutionData() }
+                val mode = schedule.optString("mode", "NONE")
+                
+                if (mode == "INTERVAL") {
+                    val intervalMin = schedule.optInt("interval", 0)
+                    val now = System.currentTimeMillis()
+                    if (now - history.lastRunTime < intervalMin * 60 * 1000L) isRunnable = false
+                } else if (mode == "COUNT") {
+                    val max = schedule.optInt("maxTimes", 0)
+                    if (max > 0 && history.runCount >= max) isRunnable = false
+                }
+            }
+            
+            // Logic Condition
+            val condition = r.optJSONObject("condition")
+            if (condition != null) {
+                val v = condition.optString("variable")
+                if (v.isNotEmpty()) {
+                     val valStored = variables[v] ?: 0
+                     if (valStored <= 0) isRunnable = false
+                }
+            }
+            
+            if (isRunnable) candidates.add(r)
+        }
+        
+        if (candidates.isEmpty()) return null
+        
+        // Sort by Priority (Low = High)
+        candidates.sortWith(compareBy<JSONObject> { it.optJSONObject("schedule")?.optInt("priority", 5) ?: 5 })
+        
+        val best = candidates[0]
+        val target = best.optString("target")
+        return TransitionAction(best, if (target.isEmpty()) sceneId else target)
+    }
+
+    private fun applySideEffects(region: JSONObject) {
+        val sideEffect = region.optJSONObject("sideEffect") ?: return
+        if (sideEffect.optString("type") == "DECREMENT") {
+            val v = sideEffect.optString("variable")
+            if (v.isNotEmpty()) {
+                val old = variables[v] ?: 0
+                variables[v] = (old - 1).coerceAtLeast(0)
+            }
+        }
+    }
+
+    private fun updateHistory(region: JSONObject) {
+        val id = region.optString("id")
+        if (id.isNotEmpty()) {
+            val h = executionHistory.getOrPut(id) { ExecutionData() }
+            h.lastRunTime = System.currentTimeMillis()
+            h.runCount++
         }
     }
 
@@ -197,652 +271,18 @@ class SceneGraphEngine(private val service: AutomationService) {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
-            if (node.optJSONObject("data")?.optBoolean("isRoot") == true) {
-                return node.getString("id")
-            }
+            if (node.optJSONObject("data")?.optBoolean("isRoot") == true) return node.getString("id")
         }
-        // Fallback: first node
         if (nodes.length() > 0) return nodes.getJSONObject(0).getString("id")
         return null
     }
 
-    private var expectedNextSceneId: String? = null
-
-    private fun identifyScene(screen: Bitmap): String? {
-        val nodes = graphData?.optJSONArray("nodes") ?: return null
-        
-        // 0. Check Expected Next Scene FIRST (Optimistic Priority)
-        if (expectedNextSceneId != null) {
-             val expectedNode = getNodeById(expectedNextSceneId!!)
-             if (expectedNode != null) {
-                 if (checkNodeAnchors(expectedNode, screen)) {
-                     Log.i(TAG, "🎯 Optimistic Match: $expectedNextSceneId")
-                     val matchedId = expectedNextSceneId
-                     expectedNextSceneId = null // Consume expectation
-                     return matchedId
-                 } else {
-                     Log.v(TAG, "🤔 Expected $expectedNextSceneId but anchors didn't match yet.")
-                 }
-             }
-        }
-        
-        // Strategy: 
-        // 1. Check Global/Interrupt scenes FIRST (High Priority)
-        // 2. Check ANY other scenes (Normal Flow)
-        
-        val globalNodes = mutableListOf<JSONObject>()
-        val normalNodes = mutableListOf<JSONObject>()
-        
-        for (i in 0 until nodes.length()) {
-            val node = nodes.getJSONObject(i)
-            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
-                globalNodes.add(node)
-            } else {
-                normalNodes.add(node)
-            }
-        }
-        
-        // 1. Check Global Candidates
-        for (node in globalNodes) {
-             val id = node.getString("id")
-             // Skip if same as current checking expected (already checked)
-             if (id == expectedNextSceneId) continue 
-             if (checkNodeAnchors(node, screen)) return id
-        }
-        
-        // 2. Check Normal Candidates
-        for (node in normalNodes) {
-             val id = node.getString("id")
-             if (id == expectedNextSceneId) continue
-             if (checkNodeAnchors(node, screen)) return id
-        }
-        
-        return null
-    }
-
-    private fun checkNodeAnchors(node: JSONObject, screen: Bitmap): Boolean {
-        val anchors = node.optJSONObject("data")?.optJSONArray("anchors")
-        if (anchors == null || anchors.length() == 0) return false
-        
-        var matchCount = 0
-        for (j in 0 until anchors.length()) {
-            val anchor = anchors.getJSONObject(j)
-            if (matchSingleAnchor(screen, anchor, node)) {
-                matchCount++
-            }
-        }
-        // Strict match: All anchors must match
-        return matchCount == anchors.length() && matchCount > 0
-    }
-
-    private fun extractNumber(text: String): Int? {
-        val regex = Regex("\\d+")
-        return regex.find(text)?.value?.toIntOrNull()
-    }
-
-    private fun matchSingleAnchor(screen: Bitmap, anchor: JSONObject, node: JSONObject): Boolean {
-        val matchType = anchor.optString("matchType", "image")
-        var isMatch = false
-        var extractedContent: String? = null
-
-        if (matchType.equals("color", ignoreCase = true)) {
-             val targetColor = anchor.optString("targetColor")
-             if (targetColor.isNotEmpty()) {
-                 isMatch = checkColorMatch(screen, anchor, targetColor)
-             } else {
-                 Log.e(TAG, "❌ Missing targetColor for anchor ${anchor.optString("id")}")
-             }
-        } else if (matchType.equals("text", ignoreCase = true)) {
-             val targetText = anchor.optString("targetText")
-             val result = checkTextMatch(screen, anchor, targetText)
-             isMatch = result.first
-             extractedContent = result.second
-        } else if (matchType.equals("ai", ignoreCase = true)) {
-             val targetPrompt = anchor.optString("targetPrompt")
-             if (targetPrompt.isNotEmpty()) {
-                 val result = checkAiMatch(screen, anchor, targetPrompt)
-                 isMatch = result.first
-                 extractedContent = result.second
-             } else {
-                 Log.e(TAG, "❌ Missing targetPrompt for AI anchor ${anchor.optString("id")}")
-             }
-        } else {
-             // Image Match
-             val base64Template = anchor.optString("template")
-             if (base64Template.isNotEmpty()) {
-                 val anchorId = anchor.optString("id")
-                 if (anchorId.isNotEmpty()) {
-                     var template = anchorTemplates[anchorId]
-                     if (template == null) {
-                         try {
-                              if (base64Template.startsWith("http")) {
-                                  val url = java.net.URL(base64Template)
-                                  template = BitmapFactory.decodeStream(url.openStream())
-                              } else {
-                                  val clean = if (base64Template.contains(",")) base64Template.split(",")[1] else base64Template
-                                  val decodedBytes = Base64.decode(clean, Base64.DEFAULT)
-                                  template = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                              }
-                              if (template != null) anchorTemplates[anchorId] = template
-                         } catch (e: Exception) {
-                              Log.e(TAG, "Template decode fail", e)
-                         }
-                     }
-                     
-                     if (template != null) {
-                         // Use strict position verification logic
-                         val result = ImageMatcher.findTemplate(screen, template, 0.7)
-                         if (result != null) {
-                              val expectedX = anchor.optDouble("x", -1.0)
-                              val expectedY = anchor.optDouble("y", -1.0)
-                              
-                              if (expectedX >= 0 && expectedY >= 0) {
-                                  val matchX = result.x
-                                  val matchY = result.y
-                                  val screenW = screen.width.toDouble()
-                                  val screenH = screen.height.toDouble()
-                                  
-                                  val targetX = (expectedX / 100.0) * screenW
-                                  val targetY = (expectedY / 100.0) * screenH
-                                  
-                                  val tolX = screenW * 0.25
-                                  val tolY = screenH * 0.25
-                                  
-                                  if (kotlin.math.abs(matchX - targetX) <= tolX && kotlin.math.abs(matchY - targetY) <= tolY) {
-                                      isMatch = true
-                                  } else {
-                                      Log.w(TAG, "⚠️ Pos Mismatch: Found($matchX, $matchY) vs Expected($targetX, $targetY)")
-                                  }
-                              } else {
-                                  // No position data, just matching content is enough
-                                  isMatch = true
-                              }
-                         }
-                     }
-                 }
-             }
-        }
-
-        // Variable Extraction
-        val variableName = anchor.optString("variableName")
-        if (isMatch && variableName.isNotEmpty() && extractedContent != null) {
-            val number = extractNumber(extractedContent)
-            if (number != null) {
-                variables[variableName] = number
-                Log.i(TAG, "💾 Variable Stored: $variableName = $number (from '$extractedContent')")
-            } else {
-                Log.w(TAG, "⚠️ Extracted text found but no numbers for var '$variableName'")
-            }
-        }
-
-        return isMatch
-    }
-
-    data class TransitionAction(val region: JSONObject, val targetSceneId: String)
-
-    private fun decideNextAction(sceneId: String): TransitionAction? {
-        val nodes = graphData?.optJSONArray("nodes") ?: return null
-        
-        // Find current node
-        val currentNode = getNodeById(sceneId) ?: return null
-        
-        val regions = currentNode.optJSONObject("data")?.optJSONArray("regions")
-        if (regions == null || regions.length() == 0) return null
-        
-        // Filter and Sort Candidates based on Schedule
-        val candidates = mutableListOf<JSONObject>()
-        
-        for (i in 0 until regions.length()) {
-            val r = regions.getJSONObject(i)
-            
-            // 0. Check Enabled
-            if (!r.optBoolean("enabled", true)) {
-                Log.v(TAG, "🚫 Skip '${r.optString("label")}' (Disabled)")
-                continue
-            }
-
-            val schedule = r.optJSONObject("schedule")
-            val id = r.optString("id") // Ensure ID exists from editor
-            
-            // Default rules
-            var isRunnable = true
-            
-            if (schedule != null && id.isNotEmpty()) {
-                val history = executionHistory.getOrPut(id) { ExecutionData() }
-                
-                // Check Execution Mode
-                val mode = schedule.optString("mode", "NONE")
-                
-                when (mode) {
-                    "INTERVAL" -> {
-                        val intervalMin = schedule.optInt("interval", 0)
-                        if (intervalMin > 0) {
-                            val now = System.currentTimeMillis()
-                            val intervalMs = intervalMin * 60 * 1000L
-                            if (now - history.lastRunTime < intervalMs) {
-                                isRunnable = false
-                                val remainingSec = (intervalMs - (now - history.lastRunTime)) / 1000
-                                Log.d(TAG, "🚫 Skip '$id' (Interval): Cooldown (${remainingSec}s left)")
-                            }
-                        }
-                    }
-                    "COUNT" -> {
-                        val maxTimes = schedule.optInt("maxTimes", 0)
-                        if (maxTimes > 0 && history.runCount >= maxTimes) {
-                            isRunnable = false
-                            Log.d(TAG, "🚫 Skip '$id' (Count): Max times reached (${history.runCount}/$maxTimes)")
-                        }
-                    }
-                    "TIME" -> {
-                        val startTimeStr = schedule.optString("time")
-                        if (startTimeStr.isNotEmpty()) {
-                            try {
-                                val parts = startTimeStr.split(":")
-                                if (parts.size == 2) {
-                                    val targetHour = parts[0].toInt()
-                                    val targetMin = parts[1].toInt()
-                                    val cal = java.util.Calendar.getInstance()
-                                    val currentHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                                    val currentMin = cal.get(java.util.Calendar.MINUTE)
-
-                                    if (currentHour < targetHour || (currentHour == targetHour && currentMin < targetMin)) {
-                                        isRunnable = false
-                                        Log.d(TAG, "🚫 Skip '$id' (Time): Not yet time ($startTimeStr)")
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Invalid time format: $startTimeStr")
-                            }
-                        }
-                    }
-                    else -> {
-                        // NONE or Legacy: Logic fallback if needed, but currently NONE means specific constraints.
-                        // For backward compatibility, if specific fields exist despite mode "NONE", we COULD check them,
-                        // but moving forward "NONE" implies no restriction (except Priority).
-                        // Let's strictly follow the new MODE if present.
-                    }
-                }
-            }
-            
-            // Check Logic Condition (Smart Loop)
-            val condition = r.optJSONObject("condition")
-            if (condition != null) {
-                val variable = condition.optString("variable")
-                if (variable.isNotEmpty()) {
-                     val currentVal = variables[variable] ?: 0
-                     // Default operator is "> 0"
-                     if (currentVal <= 0) {
-                         isRunnable = false
-                         Log.d(TAG, "🚫 Skip '${r.optString("label")}' (Condition): $variable($currentVal) <= 0")
-                     }
-                }
-            }
-            
-            if (isRunnable) {
-                candidates.add(r)
-            }
-        }
-        
-        if (candidates.isEmpty()) return null
-        
-        // Sort by Priority (Low number = High Priority). Default 5.
-        // If priorities match, random (or could be sequential)
-        // Sort by Priority (Low number = High Priority), then by Last Run Time (LRU)
-        candidates.sortWith(compareBy<JSONObject> { 
-            it.optJSONObject("schedule")?.optInt("priority", 5) ?: 5 
-        }.thenBy {
-            val id = it.optString("id")
-            executionHistory[id]?.lastRunTime ?: 0L
-        })
-        
-        // Pick top priority (first one)
-        val bestRegion = candidates[0]
-        val target = bestRegion.optString("target")
-        
-        Log.i(TAG, "🤖 決定執行 '${bestRegion.optString("label")}' (優先級: ${bestRegion.optJSONObject("schedule")?.optInt("priority") ?: 5})")
-        
-        // Assume target is sceneId if null/empty (Self Loop) for actions like "Click Button"
-        // But logic requires valid target? If target is null, we stay in same scene?
-        // Let's assume target can be empty for 'stay here'.
-        
-        return TransitionAction(bestRegion, if (target.isEmpty()) sceneId else target)
-    }
-
-    private fun performAction(action: TransitionAction) {
-        val r = action.region
-
-        // Wait BEFORE Execution (Pre-Delay)
-        val waitBefore = r.optLong("wait_before", 0L)
-        if (waitBefore > 0) {
-            Log.i(TAG, "⏳ [執行前] 睡眠 ${waitBefore}ms...")
-            Thread.sleep(waitBefore)
-        }
-        
-        // Execute Side Effects (Smart Loop)
-        val sideEffect = r.optJSONObject("sideEffect")
-        if (sideEffect != null) {
-            val type = sideEffect.optString("type")
-            val variable = sideEffect.optString("variable")
-            if (type == "DECREMENT" && variable.isNotEmpty()) {
-                val currentVal = variables[variable] ?: 0
-                val newVal = (currentVal - 1).coerceAtLeast(0)
-                variables[variable] = newVal
-                Log.i(TAG, "📉 觸發副作用: $variable = $newVal (遞減)")
-            }
-        }
-        
-        // Update History
-        val id = r.optString("id")
-        if (id.isNotEmpty()) {
-            val history = executionHistory.getOrPut(id) { ExecutionData() }
-            history.lastRunTime = System.currentTimeMillis()
-            history.runCount++
-            Log.d(TAG, "📊 Updated History for '$id': Count=${history.runCount}")
-        }
-        val act = r.optJSONObject("action")
-        val type = act?.optString("type") ?: "CLICK"
-        val label = r.optString("label", "Action")
-        val params = act?.optJSONObject("params")
-        
-        // Show Prompt
-        // Show Prompt
-        service.showToast("▶ $label")
-        
-        // 0. Handle Special Actions (LAUNCH_APP, BACK_KEY)
-        if (type == "LAUNCH_APP") {
-            var pkg = params?.optString("packageName")
-            // Use Origin Package if not specified
-            if (pkg.isNullOrEmpty() || pkg == "SELF") {
-                 pkg = service.getOriginPackageName()
-                 Log.i(TAG, "🔄 Using detected origin package: $pkg")
-            }
-            
-            if (!pkg.isNullOrEmpty()) {
-                try {
-                    val intent = service.packageManager.getLaunchIntentForPackage(pkg)
-                    if (intent != null) {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        service.startActivity(intent)
-                        Log.i(TAG, "🚀 已啟動 APP: $pkg")
-                    } else {
-                        Log.w(TAG, "⚠️ 找不到 APP: $pkg")
-                        service.showToast("找不到 APP: $pkg")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ 啟動 APP 失敗", e)
-                }
-            } else {
-                 service.showToast("⚠️ 未知目標APP (Unknown Target)")
-            }
-            return
-        }
-        
-        if (type == "BACK_KEY") {
-             service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
-             Log.i(TAG, "🔙 已執行全域返回 (BACK)")
-             return
-        }
-        
-        // 1. Calculate Base Coordinates (Center of Region)
-        val xPercent = r.getDouble("x")
-        val yPercent = r.getDouble("y")
-        val wPercent = r.getDouble("w")
-        val hPercent = r.getDouble("h")
-
-        val metrics = service.resources.displayMetrics
-        val centerX = (metrics.widthPixels * (xPercent + wPercent / 2) / 100).toFloat()
-        val centerY = (metrics.heightPixels * (yPercent + hPercent / 2) / 100).toFloat()
-
-        Log.i(TAG, "⚡ 正在執行 $type 於 ($centerX, $centerY)")
-
-        // Set Expected Next Scene (Optimistic)
-        if (action.targetSceneId.isNotEmpty() && action.targetSceneId != "null" && action.targetSceneId != "root") {
-             expectedNextSceneId = action.targetSceneId
-             Log.d(TAG, "🔭 設定預期下一場景: $expectedNextSceneId")
-        }
-
-        handler.post {
-            val path = Path()
-            path.moveTo(centerX, centerY)
-            
-            val builder = GestureDescription.Builder()
-            
-            when (type) {
-                "CLICK" -> {
-                    // Standard Click (Tap)
-                    builder.addStroke(GestureDescription.StrokeDescription(path, 0, 50))
-                }
-                "LONG_PRESS" -> {
-                    // Long Press
-                    val duration = params?.optLong("duration") ?: 1000L
-                    builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                }
-                "SWIPE" -> {
-                    // Swipe
-                    val direction = params?.optString("direction") ?: "UP"
-                    val duration = params?.optLong("duration") ?: 300L
-                    val distance = 300f // Pixels, could be configurable
-                    
-                    var endX = centerX
-                    var endY = centerY
-                    
-                    when (direction) {
-                        "UP" -> endY -= distance
-                        "DOWN" -> endY += distance
-                        "LEFT" -> endX -= distance
-                        "RIGHT" -> endX += distance
-                    }
-                    
-                    path.lineTo(endX, endY)
-                    builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                }
-                "WAIT" -> {
-                    // No gesture, just wait (logic handled in loop delay)
-                    Log.i(TAG, "⏳ 動作類型為等待 (WAIT)，不執行點擊")
-                    return@post
-                }
-            }
-            
-            try {
-                service.dispatchGesture(builder.build(), null, null)
-            } catch (e: Exception) {
-                Log.e(TAG, "Gesture Dispatch Failed", e)
-            }
-        }
-    }
-
-    private fun checkAiMatch(screen: Bitmap, anchor: JSONObject, prompt: String): Pair<Boolean, String?> {
-        try {
-            // 1. Crop
-            val ax = anchor.optDouble("x", 0.0)
-            val ay = anchor.optDouble("y", 0.0)
-            val aw = anchor.optDouble("w", 0.0)
-            val ah = anchor.optDouble("h", 0.0)
-
-            val x = (ax / 100.0 * screen.width).toInt().coerceIn(0, screen.width - 1)
-            val y = (ay / 100.0 * screen.height).toInt().coerceIn(0, screen.height - 1)
-            val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
-            val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
-            
-            if (w <= 0 || h <= 0) return Pair(false, null)
-            
-            val crop = Bitmap.createBitmap(screen, x, y, w, h)
-            
-            // 2. Compress to Base64 (JPEG, 70% quality)
-            val byteArrayOutputStream = java.io.ByteArrayOutputStream()
-            crop.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-            val base64Image = Base64.encodeToString(byteArray, Base64.NO_WRAP)
-            
-            // 3. HTTP Request
-            val url = java.net.URL("https://game-auto-editor.vercel.app/api/ai-check")
-            val conn = url.openConnection() as java.net.HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-            
-            // Handle "Force Number" flag
-            val forceNumber = anchor.optBoolean("aiForceNumber", false)
-            val fullPrompt = if (forceNumber) {
-                "$prompt. (IMPORTANT: Extract and return ONLY the single integer number found in this image. Do not include any words.)"
-            } else {
-                prompt
-            }
-
-            val jsonBody = JSONObject()
-            jsonBody.put("prompt", fullPrompt)
-            jsonBody.put("imageBase64", base64Image)
-            
-            conn.outputStream.use { os ->
-                val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
-                os.write(input, 0, input.size)
-            }
-            
-            val responseCode = conn.responseCode
-            if (responseCode == 200) {
-                conn.inputStream.bufferedReader().use { reader ->
-                    val response = reader.readText()
-                    val resultJson = JSONObject(response)
-                    val match = resultJson.optBoolean("match")
-                    val reason = resultJson.optString("reason")
-                    // If we are in extraction mode (variable set), and match is true,
-                    // we assume the 'reason' or a specific field contains the text.
-                    // Since the current API relies on LLM explanation, 'reason' usually contains the finding.
-                    
-                    Log.i(TAG, "🤖 AI Check Result: $match ($reason)")
-                    return Pair(match, reason)
-                }
-            } else {
-                Log.e(TAG, "AI Check Failed: HTTP $responseCode")
-                return Pair(false, null)
-            }
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "AI Check Error", e)
-            return Pair(false, null)
-        }
-    }
-
-    private fun checkTextMatch(screen: Bitmap, anchor: JSONObject, targetText: String): Pair<Boolean, String?> {
-        try {
-            val ax = anchor.optDouble("x", 0.0)
-            val ay = anchor.optDouble("y", 0.0)
-            val aw = anchor.optDouble("w", 0.0)
-            val ah = anchor.optDouble("h", 0.0)
-
-            val x = (ax / 100.0 * screen.width).toInt().coerceIn(0, screen.width - 1)
-            val y = (ay / 100.0 * screen.height).toInt().coerceIn(0, screen.height - 1)
-            val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
-            val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
-            
-            if (w <= 0 || h <= 0) return Pair(false, null)
-            
-            val crop = Bitmap.createBitmap(screen, x, y, w, h)
-            val image = InputImage.fromBitmap(crop, 0)
-            
-            val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
-            val task = recognizer.process(image)
-            val result = Tasks.await(task) 
-            
-            val foundText = result.text.replace("\n", "").trim()
-            
-            // Extraction Mode: If targetText is empty, we match anything found
-            if (targetText.isEmpty()) {
-                 if (foundText.isNotEmpty()) {
-                     Log.v(TAG, "🔤 OCR Extraction Mode: '$foundText'")
-                     return Pair(true, foundText)
-                 }
-                 return Pair(false, null)
-            }
-            
-            if (foundText.contains(targetText, ignoreCase = true)) {
-                Log.d(TAG, "🔤 OCR Match Success! Found: '$foundText'")
-                return Pair(true, foundText)
-            }
-            return Pair(false, null)
-            
-        } catch (e: Exception) {
-            val msg = e.message ?: ""
-            if (msg.contains("Waiting for the text optional module")) {
-                 Log.w(TAG, "⏳ OCR 中文模型下載中... (Downloading ML Kit Model)")
-            } else {
-                 Log.e(TAG, "OCR Check Failed", e)
-            }
-            return Pair(false, null)
-        }
-    }
-
-    private fun checkColorMatch(screen: Bitmap, anchor: JSONObject, targetHex: String): Boolean {
-        try {
-            val targetColor = android.graphics.Color.parseColor(targetHex)
-            val tr = android.graphics.Color.red(targetColor)
-            val tg = android.graphics.Color.green(targetColor)
-            val tb = android.graphics.Color.blue(targetColor)
-            
-            val ax = anchor.optDouble("x", 0.0)
-            val ay = anchor.optDouble("y", 0.0)
-            val aw = anchor.optDouble("w", 0.0)
-            val ah = anchor.optDouble("h", 0.0)
-            
-            val x = (ax / 100.0 * screen.width).toInt().coerceIn(0, screen.width - 1)
-            val y = (ay / 100.0 * screen.height).toInt().coerceIn(0, screen.height - 1)
-            val w = (aw / 100.0 * screen.width).toInt().coerceAtMost(screen.width - x)
-            val h = (ah / 100.0 * screen.height).toInt().coerceAtMost(screen.height - y)
-            
-            if (w <= 0 || h <= 0) return false
-            
-            var rSum = 0L
-            var gSum = 0L
-            var bSum = 0L
-            var count = 0
-            
-            val pixels = IntArray(w * h)
-            screen.getPixels(pixels, 0, w, x, y, w, h)
-            
-            for (pixel in pixels) {
-                rSum += android.graphics.Color.red(pixel)
-                gSum += android.graphics.Color.green(pixel)
-                bSum += android.graphics.Color.blue(pixel)
-                count++
-            }
-            
-            if (count == 0) return false
-            
-            val ar = (rSum / count).toInt()
-            val ag = (gSum / count).toInt()
-            val ab = (bSum / count).toInt()
-            
-            val dist = kotlin.math.sqrt(
-                ((tr - ar) * (tr - ar) + 
-                 (tg - ag) * (tg - ag) + 
-                 (tb - ab) * (tb - ab)).toDouble()
-            )
-            
-            // Tolerance: 35 (approx 13% deviation), adjustable
-            val tolerance = 35.0
-            
-            if (dist < tolerance) {
-                Log.d(TAG, "🎨 Color Match Success for ${anchor.optString("id")}: dist=${dist.toInt()}")
-                return true
-            } else {
-                Log.v(TAG, "🎨 Color Match Failed: dist=${dist.toInt()}, Target($targetHex) vs Found(R$ar,G$ag,B$ab)")
-                return false
-            }
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Color match error", e)
-            return false
-        }
-    }
     private fun getNodeById(id: String): JSONObject? {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
-            if (node.getString("id") == id) {
-                return node
-            }
+            if (node.getString("id") == id) return node
         }
         return null
     }
 }
-
