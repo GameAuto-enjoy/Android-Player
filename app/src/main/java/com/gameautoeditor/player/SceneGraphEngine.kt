@@ -487,9 +487,13 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         // Sort by Priority (Low number = High Priority). Default 5.
         // If priorities match, random (or could be sequential)
-        candidates.sortBy { 
+        // Sort by Priority (Low number = High Priority), then by Last Run Time (LRU)
+        candidates.sortWith(compareBy<JSONObject> { 
             it.optJSONObject("schedule")?.optInt("priority", 5) ?: 5 
-        }
+        }.thenBy {
+            val id = it.optString("id")
+            executionHistory[id]?.lastRunTime ?: 0L
+        })
         
         // Pick top priority (first one)
         val bestRegion = candidates[0]
