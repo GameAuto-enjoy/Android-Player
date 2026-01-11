@@ -44,9 +44,31 @@ class ActionSystem(private val service: AutomationService) {
         
         when (type) {
             "CLICK" -> {
-                val duration = randomDuration(50, 150) // Random tap duration
-                builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                Log.i(TAG, "👆 Click at (${targetPoint.x}, ${targetPoint.y}) duration=${duration}ms")
+                val repeat = params?.optInt("repeat", 1) ?: 1
+                val repeatDelay = params?.optLong("repeatDelay", 100L) ?: 100L
+                val baseDuration = randomDuration(50, 150) // Random tap duration
+
+                for (i in 0 until repeat) {
+                    val clickPath = Path()
+                    // Re-calculate target point slightly for micro-movements if desired, 
+                    // or use the same point. Currently using same point for reliability but new path object.
+                    clickPath.moveTo(targetPoint.x, targetPoint.y)
+                    
+                    val stroke = GestureDescription.StrokeDescription(clickPath, 0, baseDuration)
+                    val clickBuilder = GestureDescription.Builder()
+                    clickBuilder.addStroke(stroke)
+                    
+                    try {
+                        service.dispatchGesture(clickBuilder.build(), null, null)
+                        Log.i(TAG, "👆 Click (${i+1}/$repeat) at (${targetPoint.x}, ${targetPoint.y})")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Click Failed", e)
+                    }
+
+                    if (i < repeat - 1) {
+                        Thread.sleep(repeatDelay)
+                    }
+                }
             }
             "LONG_PRESS" -> {
                 val duration = params?.optLong("duration") ?: 1000L
