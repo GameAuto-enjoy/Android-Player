@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.6. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.7. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -96,7 +96,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                      // If current state has NO anchors defined, we assume strict adherence (Blind State)
                      if (anchors == null || anchors.length() == 0) {
                          activeId = currentSceneId
-                         // Log.v(TAG, "⚠️ 盲從模式 (Blind Trust): 強制假設在 $activeId")
+                         Log.v(TAG, "[感知] ⚠️ 盲從模式 (Blind Trust): 強制假設在 $activeId (無 anchors)")
                      }
                 }
 

@@ -64,7 +64,7 @@ class ActionSystem(private val service: AutomationService) {
                     
                     try {
                         service.dispatchGesture(clickBuilder.build(), null, null)
-                        Log.i(TAG, "[動作] 👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
+                        Log.i(TAG, "[動作: $label] 👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
                     } catch (e: Exception) {
                         Log.e(TAG, "點擊失敗", e)
                     }
@@ -78,7 +78,7 @@ class ActionSystem(private val service: AutomationService) {
             "LONG_PRESS" -> {
                 val duration = params?.optLong("duration") ?: 1000L
                 builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                Log.i(TAG, "[動作] 👆 長按 ${duration}ms 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
+                Log.i(TAG, "[動作: $label] 👆 長按 ${duration}ms 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
             }
             "SWIPE" -> {
                 val direction = params?.optString("direction") ?: "UP"
@@ -97,7 +97,7 @@ class ActionSystem(private val service: AutomationService) {
                 
                 path.lineTo(endX, endY)
                 builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                Log.i(TAG, "[動作] 👆 滑動 $direction (${duration}ms)")
+                Log.i(TAG, "[動作: $label] 👆 滑動 $direction (${duration}ms)")
             }
         }
         
