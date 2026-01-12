@@ -73,6 +73,7 @@ class ActionSystem(private val service: AutomationService) {
                         Thread.sleep(repeatDelay)
                     }
                 }
+                return // Exit after CLICK
             }
             "LONG_PRESS" -> {
                 val duration = params?.optLong("duration") ?: 1000L
