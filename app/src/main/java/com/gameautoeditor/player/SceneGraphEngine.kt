@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.2. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.3. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -278,6 +278,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     // Check Match
                     if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor), variables)) {
                         isRunnable = false
+                        Log.d(TAG, "❌ 動作條件不符: ${r.optString("label")} (匹配失敗)")
                     } else {
                         Log.v(TAG, "👁️ 條件觸發符合: ${r.optString("label")}")
                     }
