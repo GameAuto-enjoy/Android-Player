@@ -59,10 +59,10 @@ class PerceptionSystem(private val service: AutomationService) {
                 if (cleanVal.isNotEmpty()) {
                     val intVal = cleanVal.toInt()
                     variables[variableName] = intVal
-                    Log.i(TAG, "📥 Extracted Variable [$variableName] = $intVal")
+                    Log.i(TAG, "📥 提取變數 [$variableName] = $intVal")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse extracted value '${result.second}' as Int")
+                Log.w(TAG, "無法解析提取的數值 '${result.second}' 為整數")
             }
         }
 
@@ -122,7 +122,7 @@ class PerceptionSystem(private val service: AutomationService) {
                 BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Template Decode Fail", e)
+            Log.e(TAG, "模板解碼失敗", e)
             null
         }
     }
@@ -200,7 +200,7 @@ class PerceptionSystem(private val service: AutomationService) {
                     latch.countDown()
                 }
                 .addOnFailureListener { e ->
-                    Log.e(TAG, "OCR Fail", e)
+                    Log.e(TAG, "OCR 識別失敗", e)
                     latch.countDown()
                 }
 
@@ -208,7 +208,7 @@ class PerceptionSystem(private val service: AutomationService) {
             latch.await(3, java.util.concurrent.TimeUnit.SECONDS)
 
         } catch (e: Exception) {
-            Log.e(TAG, "OCR Error", e)
+            Log.e(TAG, "OCR 錯誤", e)
         }
 
         return Pair(isMatch, recognizedText)
@@ -273,16 +273,16 @@ class PerceptionSystem(private val service: AutomationService) {
                      reason = respJson.optString("reason", "")
                 }
             } else {
-                Log.e(TAG, "AI API Error: $responseCode")
+                Log.e(TAG, "AI API 錯誤: $responseCode")
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "AI Check Error", e)
+            Log.e(TAG, "AI 檢查錯誤", e)
         }
         
         // Log explanation
         if (reason != null && reason.isNotEmpty()) {
-             Log.i(TAG, "🧠 AI Reason: $reason")
+             Log.i(TAG, "🧠 AI 推理: $reason")
         }
 
         return Pair(isMatch, reason)

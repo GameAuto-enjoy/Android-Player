@@ -32,7 +32,7 @@ class AutomationService : AccessibilityService() {
                              initFloatingWindow()
                         } else {
                             floatingView?.visibility = android.view.View.VISIBLE
-                            showToast("Controls Refreshed")
+                            showToast("控制面板已刷新")
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "顯示懸浮窗錯誤", e)
@@ -398,7 +398,7 @@ class AutomationService : AccessibilityService() {
     }
     
     override fun onInterrupt() {
-        Log.w(TAG, "⚠️ Service interrupted")
+        Log.w(TAG, "⚠️ 服務已中斷")
         stopExecution()
     }
     
@@ -422,7 +422,7 @@ class AutomationService : AccessibilityService() {
             try {
                 Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                Log.e(TAG, "Toast failed: ${e.message}")
+                Log.e(TAG, "Toast 顯示失敗: ${e.message}")
             }
         }
     }
@@ -493,7 +493,7 @@ class AutomationService : AccessibilityService() {
         try {
             latch.await(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
         } catch (e: Exception) {
-            Log.e(TAG, "Screenshot timeout")
+            Log.e(TAG, "截圖逾時")
         }
         return result
     }

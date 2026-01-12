@@ -29,7 +29,7 @@ class ActionSystem(private val service: AutomationService) {
         }
         
         if (type == "WAIT") {
-            Log.i(TAG, "⏳ Wait action, skipping gesture")
+            Log.i(TAG, "⏳ 等待動作，跳過手勢")
             return
         }
 
@@ -60,9 +60,9 @@ class ActionSystem(private val service: AutomationService) {
                     
                     try {
                         service.dispatchGesture(clickBuilder.build(), null, null)
-                        Log.i(TAG, "👆 Click (${i+1}/$repeat) at (${targetPoint.x}, ${targetPoint.y})")
+                        Log.i(TAG, "👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x}, ${targetPoint.y})")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Click Failed", e)
+                        Log.e(TAG, "點擊失敗", e)
                     }
 
                     if (i < repeat - 1) {
@@ -91,14 +91,14 @@ class ActionSystem(private val service: AutomationService) {
                 
                 path.lineTo(endX, endY)
                 builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                Log.i(TAG, "👆 Swipe $direction")
+                Log.i(TAG, "👆 滑動 $direction")
             }
         }
         
         try {
             service.dispatchGesture(builder.build(), null, null)
         } catch (e: Exception) {
-            Log.e(TAG, "Gesture Failed", e)
+            Log.e(TAG, "手勢失敗", e)
         }
     }
 

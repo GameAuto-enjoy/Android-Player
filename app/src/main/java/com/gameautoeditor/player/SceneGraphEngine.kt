@@ -41,12 +41,12 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) Started. Build: 1768179900. Vars: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1768179900. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse script", e)
+            Log.e(TAG, "解析腳本失敗", e)
             isRunning = false
         }
     }
@@ -55,7 +55,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         isRunning = false
         perceptionSystem.clearCache()
         executionHistory.clear()
-        Log.i(TAG, "⏹️ Stopped")
+        Log.i(TAG, "⏹️ 已停止")
     }
 
     private fun runLoop() {
@@ -63,8 +63,8 @@ class SceneGraphEngine(private val service: AutomationService) {
         var currentSceneId = findRootNodeId()
         
         if (currentSceneId == null) {
-            Log.e(TAG, "❌ No Root Node found in script")
-            service.showToast("Script Error: No Start Node")
+            Log.e(TAG, "❌ 腳本中找不到起始節點 (Root Node)")
+            service.showToast("腳本錯誤：找不到起始節點")
             isRunning = false
             return
         }
@@ -101,7 +101,7 @@ class SceneGraphEngine(private val service: AutomationService) {
 
                 if (activeId != null) {
                     if (activeId != currentSceneId) {
-                         Log.i(TAG, "📍 State Transition: $currentSceneId -> $activeId")
+                         Log.i(TAG, "📍 狀態切換: $currentSceneId -> $activeId")
                          currentSceneId = activeId
                     } else {
                          // Log.v(TAG, "📍 In State: $activeId")
@@ -127,13 +127,13 @@ class SceneGraphEngine(private val service: AutomationService) {
                          Thread.sleep(500)
                     }
                 } else {
-                    Log.d(TAG, "❓ Lost State (No Match). Waiting...")
+                    Log.d(TAG, "❓ 狀態丟失 (無匹配). 等待中...")
                     Thread.sleep(500)
                 }
                 
                 screen.recycle()
             } catch (e: Exception) {
-                Log.e(TAG, "Loop Error", e)
+                Log.e(TAG, "循環錯誤", e)
                 Thread.sleep(1000)
             }
         }
@@ -146,7 +146,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         val currentPkg = service.getFgPackageName()
         
         if (originPkg != null && currentPkg != null && originPkg != currentPkg && currentPkg != service.packageName) {
-            Log.w(TAG, "🛡️ App Drift: $currentPkg != $originPkg. Attempting restore...")
+            Log.w(TAG, "🛡️ 應用程式偏移: $currentPkg != $originPkg. 嘗試恢復...")
             try {
                 val intent = service.packageManager.getLaunchIntentForPackage(originPkg)
                 if (intent != null) {
@@ -155,7 +155,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     Thread.sleep(3000)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Restore Failed", e)
+                Log.e(TAG, "恢復失敗", e)
             }
             return false
         }
@@ -170,7 +170,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             val node = nodes.getJSONObject(i)
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
                 if (perceptionSystem.isStateActive(screen, node, variables)) {
-                    Log.d(TAG, "⚡ Global State Triggered: ${node.getString("id")}")
+                    Log.d(TAG, "⚡ 觸發全域狀態: ${node.getString("id")}")
                     return node.getString("id")
                 }
             }
@@ -195,7 +195,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue 
             
             if (perceptionSystem.isStateActive(screen, node, variables)) {
-                Log.d(TAG, "🔍 Found New State: $id")
+                Log.d(TAG, "🔍 發現新狀態: $id")
                 return id
             }
         }
