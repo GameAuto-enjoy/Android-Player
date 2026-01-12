@@ -114,14 +114,19 @@ class SceneGraphEngine(private val service: AutomationService) {
                         Log.i(TAG, "🤖 決定執行 '${action.region.optString("label")}' (優先級: ${action.region.optJSONObject("schedule")?.optInt("priority", 5) ?: 5})")
                         Log.d(TAG, "🔭 預期下一場景: ${action.targetSceneId}")
 
-                        // 3. Action (Hand)
-                        val waitBefore = action.region.optLong("wait_before", 0L)
-                        if (waitBefore > 0) {
-                            Log.i(TAG, "⏳ [執行前] 睡眠 ${waitBefore}ms...")
-                            Thread.sleep(waitBefore)
-                        }
+                        // 3. Action (Hand) - Handle CHECK_EXIT (No Click)
+                        val actionType = action.region.optJSONObject("action")?.optString("type")
+                        if (actionType != "CHECK_EXIT") {
+                            val waitBefore = action.region.optLong("wait_before", 0L)
+                            if (waitBefore > 0) {
+                                Log.i(TAG, "⏳ [執行前] 睡眠 ${waitBefore}ms...")
+                                Thread.sleep(waitBefore)
+                            }
 
-                        actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region)
+                            actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region)
+                        } else {
+                            Log.i(TAG, "⏭️ 條件符合，執行純跳轉 (No Click)")
+                        }
                         
                         applySideEffects(action.region)
                         updateHistory(action.region)
@@ -253,22 +258,33 @@ class SceneGraphEngine(private val service: AutomationService) {
             }
             
             if (isRunnable) {
-                // SPECIAL: Check Exit Condition (Perception Trigger)
-                val actionType = r.optJSONObject("action")?.optString("type")
-                if (actionType == "CHECK_EXIT") {
-                    // Treat 'r' (Region) as an Anchor for perception
-                    // Need to ensure it has 'matchType' etc. at root level, which UI now provides.
-                    service.updateStatus("👁️ 檢查跳轉條件: ${r.optString("label")}")
+                // Perception Trigger Check (Eyes on Hand)
+                val perception = r.optJSONObject("perception")
+                if (perception != null) {
+                    // Combine Region Coords with Perception Config
+                    val anchor = JSONObject()
+                    anchor.put("x", r.optInt("x", 0))
+                    anchor.put("y", r.optInt("y", 0))
+                    anchor.put("w", r.optInt("w", 0))
+                    anchor.put("h", r.optInt("h", 0))
                     
-                    if (perceptionSystem.isStateActive(screen, createFakeNode(r), variables)) {
-                         Log.i(TAG, "🟢 條件符合，準備跳轉: ${r.optString("label")} -> ${r.optString("target")}")
-                         candidates.add(r)
-                    } else {
-                         // Log.v(TAG, "⚪ 條件不符: ${r.optString("label")}")
+                    val keys = perception.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        anchor.put(key, perception.get(key))
                     }
-                } else {
-                     candidates.add(r) 
+
+                    // Check Match
+                    if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor), variables)) {
+                        isRunnable = false
+                    } else {
+                        Log.v(TAG, "👁️ 條件觸發符合: ${r.optString("label")}")
+                    }
                 }
+            }
+
+            if (isRunnable) {
+                candidates.add(r)
             }
         }
         
