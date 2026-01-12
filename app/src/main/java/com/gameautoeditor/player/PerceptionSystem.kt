@@ -15,7 +15,7 @@ class PerceptionSystem(private val service: AutomationService) {
     /**
      * 感知 (Eyes): 檢查當前畫面是否符合某個 State (Scene Node) 的特徵
      */
-    fun isStateActive(screen: Bitmap, stateNode: JSONObject, variables: MutableMap<String, Int>): Boolean {
+    fun isStateActive(screen: Bitmap, stateNode: JSONObject, variables: MutableMap<String, Int>, sceneName: String = "Unknown"): Boolean {
         val anchors = stateNode.optJSONObject("data")?.optJSONArray("anchors")
         if (anchors == null || anchors.length() == 0) return false
 
@@ -25,7 +25,7 @@ class PerceptionSystem(private val service: AutomationService) {
         for (i in 0 until totalAnchors) {
             val anchor = anchors.getJSONObject(i)
             // Use specialized check that can update variables
-            if (checkAnchor(screen, anchor, variables)) {
+            if (checkAnchor(screen, anchor, variables, sceneName)) {
                 matchCount++
             }
         }
@@ -39,7 +39,7 @@ class PerceptionSystem(private val service: AutomationService) {
         // ImageMatcher has its own logic, but we might want to clear local cache
     }
 
-    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>): Boolean {
+    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String): Boolean {
         val matchType = anchor.optString("matchType", "image")
         val variableName = anchor.optString("variableName")
         
@@ -47,7 +47,7 @@ class PerceptionSystem(private val service: AutomationService) {
             "color" -> Pair(checkColor(screen, anchor), null)
             "text" -> checkText(screen, anchor)
             "ai" -> checkAi(screen, anchor)
-            else -> Pair(checkImage(screen, anchor), null)
+            else -> Pair(checkImage(screen, anchor, sceneName), null)
         }
 
         // If defined, EXTRACT value into variable
@@ -71,7 +71,7 @@ class PerceptionSystem(private val service: AutomationService) {
 
     // --- Specific Perception Methods ---
 
-    private fun checkImage(screen: Bitmap, anchor: JSONObject): Boolean {
+    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String): Boolean {
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) return false
 
@@ -94,7 +94,7 @@ class PerceptionSystem(private val service: AutomationService) {
             return false
         }
         
-        Log.d(TAG, "✅ 圖片匹配成功: ${anchor.optString("label")} 座標:(${result.x.toInt()}, ${result.y.toInt()})")
+        // Log.d(TAG, "✅ 圖片匹配成功: ${anchor.optString("label")} 座標:(${result.x.toInt()}, ${result.y.toInt()})")
         
         // Verify Position
         val expectedX = anchor.optDouble("x", -1.0)
@@ -112,9 +112,13 @@ class PerceptionSystem(private val service: AutomationService) {
             
             if (kotlin.math.abs(result.x - targetX) > tolX || kotlin.math.abs(result.y - targetY) > tolY) {
                 // Relaxed: Log warning but ACCEPT the match if the image is found
-                Log.w(TAG, "[感知] ⚠️ 圖片位置偏差較大: ${anchor.optString("label")} 預期:($targetX, $targetY) 實際:(${result.x}, ${result.y})")
+                 Log.w(TAG, "[場景: $sceneName] ⚠️ 圖片位置偏差: ${anchor.optString("label")} 預期:($targetX, $targetY) 實際:(${result.x}, ${result.y})")
                 // return false <-- Disable strict check
+            } else {
+                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: ${anchor.optString("label")} (${result.x.toInt()}, ${result.y.toInt()})")
             }
+        } else {
+             Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查): ${anchor.optString("label")} (${result.x.toInt()}, ${result.y.toInt()})")
         }
         
         return true

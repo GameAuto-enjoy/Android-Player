@@ -187,8 +187,9 @@ class SceneGraphEngine(private val service: AutomationService) {
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
-                if (perceptionSystem.isStateActive(screen, node, variables)) {
-                    Log.d(TAG, "[場景] ⚡ 全域中斷: ${getNodeName(node.getString("id"))}")
+                val sceneName = getNodeName(node.getString("id"))
+                if (perceptionSystem.isStateActive(screen, node, variables, sceneName)) {
+                    Log.d(TAG, "[場景] ⚡ 全域中斷: $sceneName")
                     return node.getString("id")
                 }
             }
@@ -198,7 +199,8 @@ class SceneGraphEngine(private val service: AutomationService) {
         if (currentId != null) {
              val currNode = getNodeById(currentId)
              if (currNode != null) {
-                 if (perceptionSystem.isStateActive(screen, currNode, variables)) {
+                 val sceneName = getNodeName(currentId)
+                 if (perceptionSystem.isStateActive(screen, currNode, variables, sceneName)) {
                      // Stay
                      return currentId
                  }
@@ -212,8 +214,9 @@ class SceneGraphEngine(private val service: AutomationService) {
             if (id == currentId) continue
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue 
             
-            if (perceptionSystem.isStateActive(screen, node, variables)) {
-                Log.d(TAG, "[場景] 🔍 發現狀態: ${getNodeName(id)}")
+            val sceneName = getNodeName(id)
+            if (perceptionSystem.isStateActive(screen, node, variables, sceneName)) {
+                Log.d(TAG, "[場景] 🔍 發現狀態: $sceneName")
                 return id
             }
         }
@@ -282,7 +285,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     }
 
                     // Check Match
-                    if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor), variables)) {
+                    if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor), variables, sceneName)) {
                         isRunnable = false
                         Log.d(TAG, "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符)")
                     } else {
