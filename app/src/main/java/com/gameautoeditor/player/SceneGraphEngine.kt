@@ -108,7 +108,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     }
 
                     // 2. Decision (Brain)
-                    val action = decideNextAction(activeId!!)
+                    val action = decideNextAction(screen, activeId!!)
                     
                     if (action != null) {
                         Log.i(TAG, "🤖 決定執行 '${action.region.optString("label")}' (優先級: ${action.region.optJSONObject("schedule")?.optInt("priority", 5) ?: 5})")
@@ -212,7 +212,7 @@ class SceneGraphEngine(private val service: AutomationService) {
 
     data class TransitionAction(val region: JSONObject, val targetSceneId: String)
 
-    private fun decideNextAction(sceneId: String): TransitionAction? {
+    private fun decideNextAction(screen: Bitmap, sceneId: String): TransitionAction? {
         val currentNode = getNodeById(sceneId) ?: return null
         val regions = currentNode.optJSONObject("data")?.optJSONArray("regions")
         if (regions == null || regions.length() == 0) return null
