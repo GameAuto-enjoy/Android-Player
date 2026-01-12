@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) Started. Vars: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) Started. Build: 1768179900. Vars: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -165,31 +165,42 @@ class SceneGraphEngine(private val service: AutomationService) {
     private fun identifyScene(screen: Bitmap, currentId: String?): String? {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         
-        // Priority 1: Check Global scenes (High Priority Interrupts)
+        // Priority 1: Global Scenes
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
-                if (perceptionSystem.isStateActive(screen, node, variables)) return node.getString("id")
+                if (perceptionSystem.isStateActive(screen, node, variables)) {
+                    Log.d(TAG, "⚡ Global State Triggered: ${node.getString("id")}")
+                    return node.getString("id")
+                }
             }
         }
         
-        // Priority 2: Check Current Scene (Stability Bias)
+        // Priority 2: Current Scene (Stability)
         if (currentId != null) {
              val currNode = getNodeById(currentId)
-             if (currNode != null && perceptionSystem.isStateActive(screen, currNode, variables)) return currentId
+             if (currNode != null) {
+                 if (perceptionSystem.isStateActive(screen, currNode, variables)) {
+                     // Log.v(TAG, "⚓ Staying in Current State: $currentId")
+                     return currentId
+                 }
+             }
         }
         
-        // Priority 3: Check Others
+        // Priority 3: Other Scenes
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
             val id = node.getString("id")
             if (id == currentId) continue
-            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue // Already checked
+            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue 
             
-            if (perceptionSystem.isStateActive(screen, node, variables)) return id
+            if (perceptionSystem.isStateActive(screen, node, variables)) {
+                Log.d(TAG, "🔍 Found New State: $id")
+                return id
+            }
         }
         
-        return null
+        return null // Strict: No match found
     }
 
     data class TransitionAction(val region: JSONObject, val targetSceneId: String)
