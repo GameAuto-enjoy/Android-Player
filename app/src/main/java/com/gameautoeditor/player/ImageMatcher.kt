@@ -74,7 +74,8 @@ object ImageMatcher {
     fun findTemplate(
         screenBitmap: Bitmap,
         templateBitmap: Bitmap,
-        threshold: Double = 0.8
+        threshold: Double = 0.8,
+        expectedScale: Double? = null
     ): MatchResult? {
         if (!isInitialized) initOpenCV()
 
@@ -96,25 +97,32 @@ object ImageMatcher {
             val templateRgb = Mat()
             Imgproc.cvtColor(templateMat, templateRgb, Imgproc.COLOR_RGBA2RGB)
 
-            // 1. Try Original Scale (1.0x)
             var bestResult: MatchResult? = null
             var bestScore = -1.0
             
-            val pass1 = matchAtScale(screenBgr, templateRgb, mask)
-            if (pass1.second >= threshold) {
-                // Perfect match found early
-                screenMat.release(); screenBgr.release(); templateMat.release(); templateRgb.release(); channels.forEach{it.release()}
-                return pass1.first
+            // Determine scales to check
+            val scalesToCheck = mutableListOf<Double>()
+            
+            if (expectedScale != null && expectedScale > 0) {
+                // Priority: Expected Scale +/- 10%
+                scalesToCheck.add(expectedScale)
+                scalesToCheck.add(expectedScale * 0.9)
+                scalesToCheck.add(expectedScale * 1.1)
+                // Add backup scales if strict check fails? 
+                // Let's add standard scales but filtered to avoid duplicates
+                val standardScales = listOf(0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
+                for (s in standardScales) {
+                    if (kotlin.math.abs(s - expectedScale) > 0.15) { // Only add if significantly different
+                        scalesToCheck.add(s)
+                    }
+                }
+            } else {
+                // Standard Strategy: 1.0 then broad search
+                scalesToCheck.add(1.0)
+                scalesToCheck.addAll(listOf(0.5, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.3, 1.4, 1.5))
             }
             
-            bestResult = pass1.first
-            bestScore = pass1.second
-            
-            // 2. Multi-Scale Search (Fallback)
-            // Scales to check: 0.5 to 1.5
-            val scales = listOf(0.5, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.3, 1.4, 1.5)
-            
-            for (scale in scales) {
+            for (scale in scalesToCheck) {
                 val newW = (templateRgb.cols() * scale).toInt()
                 val newH = (templateRgb.rows() * scale).toInt()
                 
@@ -123,23 +131,36 @@ object ImageMatcher {
                 val scaledTemplate = Mat()
                 val scaledMask = if (mask != null) Mat() else null
                 
-                Imgproc.resize(templateRgb, scaledTemplate, org.opencv.core.Size(newW.toDouble(), newH.toDouble()))
-                if (mask != null) {
-                    Imgproc.resize(mask, scaledMask, org.opencv.core.Size(newW.toDouble(), newH.toDouble()))
+                if (scale == 1.0) {
+                     templateRgb.copyTo(scaledTemplate)
+                     mask?.copyTo(scaledMask)
+                } else {
+                    Imgproc.resize(templateRgb, scaledTemplate, org.opencv.core.Size(newW.toDouble(), newH.toDouble()))
+                    if (mask != null) {
+                        Imgproc.resize(mask, scaledMask, org.opencv.core.Size(newW.toDouble(), newH.toDouble()))
+                    }
                 }
                 
                 val res = matchAtScale(screenBgr, scaledTemplate, scaledMask)
+                
+                // Early Exit on Good Match
+                if (res.second >= threshold) {
+                    // Cleanup Loop
+                    scaledTemplate.release()
+                    scaledMask?.release()
+                    screenMat.release(); screenBgr.release(); templateMat.release(); templateRgb.release(); channels.forEach{it.release()}
+                    
+                    Log.d(TAG, "✅ Match Found at Scale ${scale}x (Score: ${res.second})")
+                    return res.first
+                }
+
                 if (res.second > bestScore) {
                     bestScore = res.second
                     bestResult = res.first
-                    Log.v(TAG, "Best Score Updated (Scale ${scale}x): $bestScore")
                 }
                 
                 scaledTemplate.release()
                 scaledMask?.release()
-                
-                // Optimistic Exit
-                if (bestScore >= threshold) break
             }
             
             // Cleanup

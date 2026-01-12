@@ -285,7 +285,8 @@ class SceneGraphEngine(private val service: AutomationService) {
                     }
 
                     // Check Match
-                    if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor), variables, sceneName)) {
+                    val resolution = currentNode.optJSONObject("resolution")
+                    if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor, resolution), variables, sceneName)) {
                         isRunnable = false
                         Log.d(TAG, "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符)")
                     } else {
@@ -349,7 +350,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         }
         return null
     }
-    private fun createFakeNode(anchorRegion: JSONObject): JSONObject {
+    private fun createFakeNode(anchorRegion: JSONObject, resolution: JSONObject? = null): JSONObject {
         val fakeData = JSONObject()
         val anchors = org.json.JSONArray()
         anchors.put(anchorRegion)
@@ -357,6 +358,9 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         val fakeNode = JSONObject()
         fakeNode.put("data", fakeData)
+        if (resolution != null) {
+            fakeNode.put("resolution", resolution)
+        }
         return fakeNode
     }
 }

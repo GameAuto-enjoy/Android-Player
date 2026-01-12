@@ -22,10 +22,21 @@ class PerceptionSystem(private val service: AutomationService) {
         var matchCount = 0
         val totalAnchors = anchors.length()
 
+        // Calculate Expected Scale
+        // Scale = Device.Width / Node.Resolution.Width
+        val nodeRes = stateNode.optJSONObject("resolution")
+        var expectedScale: Double? = null
+        if (nodeRes != null) {
+            val w = nodeRes.optDouble("w", 0.0)
+            if (w > 0) {
+                 expectedScale = service.resources.displayMetrics.widthPixels.toDouble() / w
+            }
+        }
+
         for (i in 0 until totalAnchors) {
             val anchor = anchors.getJSONObject(i)
             // Use specialized check that can update variables
-            if (checkAnchor(screen, anchor, variables, sceneName)) {
+            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale)) {
                 matchCount++
             }
         }
@@ -39,7 +50,7 @@ class PerceptionSystem(private val service: AutomationService) {
         // ImageMatcher has its own logic, but we might want to clear local cache
     }
 
-    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String): Boolean {
+    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?): Boolean {
         val matchType = anchor.optString("matchType", "image")
         val variableName = anchor.optString("variableName")
         
@@ -47,7 +58,7 @@ class PerceptionSystem(private val service: AutomationService) {
             "color" -> Pair(checkColor(screen, anchor), null)
             "text" -> checkText(screen, anchor)
             "ai" -> checkAi(screen, anchor)
-            else -> Pair(checkImage(screen, anchor, sceneName), null)
+            else -> Pair(checkImage(screen, anchor, sceneName, scale), null)
         }
 
         // If defined, EXTRACT value into variable
@@ -71,7 +82,7 @@ class PerceptionSystem(private val service: AutomationService) {
 
     // --- Specific Perception Methods ---
 
-    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String): Boolean {
+    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?): Boolean {
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) return false
 
@@ -88,7 +99,7 @@ class PerceptionSystem(private val service: AutomationService) {
         if (template == null) return false
 
         // Use ImageMatcher (OpenCV)
-        val result = ImageMatcher.findTemplate(screen, template, 0.7)
+        val result = ImageMatcher.findTemplate(screen, template, 0.7, scale)
         if (result == null) {
             // Log.d(TAG, "❌ 圖片匹配失敗: ${anchor.optString("label")} (信心度不足)")
             return false
