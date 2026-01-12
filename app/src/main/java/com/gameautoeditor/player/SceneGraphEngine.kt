@@ -111,9 +111,15 @@ class SceneGraphEngine(private val service: AutomationService) {
                     val action = decideNextAction(activeId!!)
                     
                     if (action != null) {
+                        Log.i(TAG, "🤖 決定執行 '${action.region.optString("label")}' (優先級: ${action.region.optJSONObject("schedule")?.optInt("priority", 5) ?: 5})")
+                        Log.d(TAG, "🔭 預期下一場景: ${action.targetSceneId}")
+
                         // 3. Action (Hand)
                         val waitBefore = action.region.optLong("wait_before", 0L)
-                        if (waitBefore > 0) Thread.sleep(waitBefore)
+                        if (waitBefore > 0) {
+                            Log.i(TAG, "⏳ [執行前] 睡眠 ${waitBefore}ms...")
+                            Thread.sleep(waitBefore)
+                        }
 
                         actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region)
                         
@@ -121,6 +127,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                         updateHistory(action.region)
                         
                         val waitAfter = action.region.optLong("wait_after", 1000L)
+                        Log.i(TAG, "⏳ [執行後] 睡眠 ${waitAfter}ms...")
                         Thread.sleep(waitAfter)
                     } else {
                          // Idle in state (Waiting for cooldowns or trigger)
