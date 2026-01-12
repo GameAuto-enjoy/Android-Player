@@ -8,7 +8,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 class ActionSystem(private val service: AutomationService) {
-    private val TAG = "GameAuto.Action"
+    private val TAG = "GameAuto"
 
     /**
      * 執行動作 (Hands)
@@ -23,18 +23,17 @@ class ActionSystem(private val service: AutomationService) {
 
         // 1. Handle Special Actions
         if (type == "LAUNCH_APP") {
-            // ... logic to launch app (keep existing logic or simplified)
-            // Ideally we move high level Android intents elsewhere, but Hands can do it.
+            // ... logic to launch app
             return
         }
         
         if (type == "WAIT") {
-            Log.i(TAG, "⏳ 等待動作，跳過手勢")
+            Log.i(TAG, "[動作] ⏳ 等待動作，跳過手勢")
             return
         }
 
         if (type == "CHECK_EXIT") {
-            Log.i(TAG, "⚡ 條件跳轉觸發，跳過手勢")
+            Log.i(TAG, "[動作] ⚡ 條件跳轉觸發，跳過手勢")
             return
         }
 
@@ -65,7 +64,7 @@ class ActionSystem(private val service: AutomationService) {
                     
                     try {
                         service.dispatchGesture(clickBuilder.build(), null, null)
-                        Log.i(TAG, "👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x}, ${targetPoint.y})")
+                        Log.i(TAG, "[動作] 👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
                     } catch (e: Exception) {
                         Log.e(TAG, "點擊失敗", e)
                     }
@@ -78,6 +77,7 @@ class ActionSystem(private val service: AutomationService) {
             "LONG_PRESS" -> {
                 val duration = params?.optLong("duration") ?: 1000L
                 builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+                Log.i(TAG, "[動作] 👆 長按 ${duration}ms 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
             }
             "SWIPE" -> {
                 val direction = params?.optString("direction") ?: "UP"
@@ -96,7 +96,7 @@ class ActionSystem(private val service: AutomationService) {
                 
                 path.lineTo(endX, endY)
                 builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                Log.i(TAG, "👆 滑動 $direction")
+                Log.i(TAG, "[動作] 👆 滑動 $direction (${duration}ms)")
             }
         }
         

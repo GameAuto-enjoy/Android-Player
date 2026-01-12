@@ -111,8 +111,9 @@ class PerceptionSystem(private val service: AutomationService) {
             val tolY = metrics.heightPixels * 0.1
             
             if (kotlin.math.abs(result.x - targetX) > tolX || kotlin.math.abs(result.y - targetY) > tolY) {
-                Log.d(TAG, "❌ 圖片位置不符: ${anchor.optString("label")} 預期:($targetX, $targetY) 實際:(${result.x}, ${result.y})")
-                return false
+                // Relaxed: Log warning but ACCEPT the match if the image is found
+                Log.w(TAG, "[感知] ⚠️ 圖片位置偏差較大: ${anchor.optString("label")} 預期:($targetX, $targetY) 實際:(${result.x}, ${result.y})")
+                // return false <-- Disable strict check
             }
         }
         
