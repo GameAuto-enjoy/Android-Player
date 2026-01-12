@@ -7,7 +7,7 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 
 class PerceptionSystem(private val service: AutomationService) {
-    private val TAG = "GameAuto.Eye"
+    private val TAG = "GameAuto"
     
     // Cache for Decoded Template Bitmaps (Config Layer asset)
     private val templateCache = mutableMapOf<String, Bitmap>()
@@ -59,7 +59,7 @@ class PerceptionSystem(private val service: AutomationService) {
                 if (cleanVal.isNotEmpty()) {
                     val intVal = cleanVal.toInt()
                     variables[variableName] = intVal
-                    Log.i(TAG, "📥 提取變數 [$variableName] = $intVal")
+                    Log.i(TAG, "📥 變數提取成功 [$variableName] = $intVal (原始值: ${result.second})")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "無法解析提取的數值 '${result.second}' 為整數")
@@ -88,7 +88,13 @@ class PerceptionSystem(private val service: AutomationService) {
         if (template == null) return false
 
         // Use ImageMatcher (OpenCV)
-        val result = ImageMatcher.findTemplate(screen, template, 0.7) ?: return false
+        val result = ImageMatcher.findTemplate(screen, template, 0.7)
+        if (result == null) {
+            // Log.d(TAG, "❌ 圖片匹配失敗: ${anchor.optString("label")} (信心度不足)")
+            return false
+        }
+        
+        Log.d(TAG, "✅ 圖片匹配成功: ${anchor.optString("label")} 座標:(${result.x.toInt()}, ${result.y.toInt()})")
         
         // Verify Position
         val expectedX = anchor.optDouble("x", -1.0)
@@ -104,7 +110,7 @@ class PerceptionSystem(private val service: AutomationService) {
             val tolX = metrics.widthPixels * 0.1
             val tolY = metrics.heightPixels * 0.1
             
-            if (kotlin.math.abs(result.x - targetX) > tolX || kotlin.math.abs(result.y - targetY) > tolY) {
+                Log.d(TAG, "❌ 圖片位置不符: ${anchor.optString("label")} 預期:($targetX, $targetY) 實際:(${result.x}, ${result.y})")
                 return false
             }
         }
@@ -165,7 +171,13 @@ class PerceptionSystem(private val service: AutomationService) {
             val dist = kotlin.math.sqrt(
                 ((r-tr)*(r-tr) + (g-tg)*(g-tg) + (b-tb)*(b-tb)).toDouble()
             )
-            return dist < 50.0 // Tolerance
+            if (dist < 50.0) {
+                Log.d(TAG, "✅ 顏色匹配成功: ${anchor.optString("label")} Dist:$dist")
+                return true
+            } else {
+                 // Log.v(TAG, "❌ 顏色匹配失敗: ${anchor.optString("label")} Dist:$dist Target:$targetColor Found:RGB($r,$g,$b)")
+                return false
+            }
         } catch (e: Exception) {
             return false
         }
@@ -206,6 +218,12 @@ class PerceptionSystem(private val service: AutomationService) {
 
             // Wait max 3 seconds
             latch.await(3, java.util.concurrent.TimeUnit.SECONDS)
+            
+            if (isMatch) {
+                 Log.i(TAG, "✅ OCR 匹配成功: '${recognizedText}' 包含 '$targetText'")
+            } else {
+                 Log.d(TAG, "❌ OCR 匹配失敗: 識別出 '${recognizedText}', 預期包含 '$targetText'")
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "OCR 錯誤", e)

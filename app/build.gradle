@@ -11,8 +11,8 @@ android {
         applicationId "com.gameautoeditor.player"
         minSdk 24
         targetSdk 34
-        versionCode 38
-        versionName "1.6.1"
+        versionCode 39
+        versionName "1.6.2"
     }
 
     signingConfigs {

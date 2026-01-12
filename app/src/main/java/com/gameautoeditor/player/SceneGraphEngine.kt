@@ -8,7 +8,7 @@ import android.util.Log
 import org.json.JSONObject
 
 class SceneGraphEngine(private val service: AutomationService) {
-    private val TAG = "GameAuto.FSM"
+    private val TAG = "GameAuto"
     private var graphData: JSONObject? = null
     private var isRunning = false
     private var workerThread: Thread? = null
@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1768179900. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.2. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -96,6 +96,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                      // If current state has NO anchors defined, we assume strict adherence (Blind State)
                      if (anchors == null || anchors.length() == 0) {
                          activeId = currentSceneId
+                         // Log.v(TAG, "⚠️ 盲從模式 (Blind Trust): 強制假設在 $activeId")
                      }
                 }
 
@@ -104,15 +105,15 @@ class SceneGraphEngine(private val service: AutomationService) {
                          Log.i(TAG, "📍 狀態切換: $currentSceneId -> $activeId")
                          currentSceneId = activeId
                     } else {
-                         // Log.v(TAG, "📍 In State: $activeId")
+                         // Log.v(TAG, "⚓ 維持狀態: $activeId")
                     }
 
                     // 2. Decision (Brain)
                     val action = decideNextAction(screen, activeId!!)
                     
                     if (action != null) {
-                        Log.i(TAG, "🤖 決定執行 '${action.region.optString("label")}' (優先級: ${action.region.optJSONObject("schedule")?.optInt("priority", 5) ?: 5})")
-                        Log.d(TAG, "🔭 預期下一場景: ${action.targetSceneId}")
+                        Log.i(TAG, "⚡ [Action] 執行: '${action.region.optString("label")}' -> 前往: ${action.targetSceneId}")
+                        // Log.d(TAG, "   優先級: ${action.region.optJSONObject("schedule")?.optInt("priority", 5) ?: 5}")
 
                         // 3. Action (Hand) - Handle CHECK_EXIT (No Click)
                         val actionType = action.region.optJSONObject("action")?.optString("type")
@@ -139,7 +140,8 @@ class SceneGraphEngine(private val service: AutomationService) {
                          Thread.sleep(500)
                     }
                 } else {
-                    Log.d(TAG, "❓ 狀態丟失 (無匹配). 等待中...")
+                } else {
+                    Log.i(TAG, "❓ [Unknown] 未知狀態 (無匹配特徵). 掃描中...")
                     Thread.sleep(500)
                 }
                 
@@ -304,7 +306,9 @@ class SceneGraphEngine(private val service: AutomationService) {
             val v = sideEffect.optString("variable")
             if (v.isNotEmpty()) {
                 val old = variables[v] ?: 0
-                variables[v] = (old - 1).coerceAtLeast(0)
+                val newVal = (old - 1).coerceAtLeast(0)
+                variables[v] = newVal
+                Log.d(TAG, "📉 變數遞減: $v ($old -> $newVal)")
             }
         }
     }
