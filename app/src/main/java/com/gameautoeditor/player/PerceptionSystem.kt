@@ -108,24 +108,32 @@ class PerceptionSystem(private val service: AutomationService) {
         // Log.d(TAG, "✅ 圖片匹配成功: ${anchor.optString("label")} 座標:(${result.x.toInt()}, ${result.y.toInt()})")
         
         // Verify Position
+        val metrics = service.resources.displayMetrics
         val expectedX = anchor.optDouble("x", -1.0)
         val expectedY = anchor.optDouble("y", -1.0)
         
         if (expectedX >= 0 && expectedY >= 0) {
-            val metrics = service.resources.displayMetrics
-            val targetX = (expectedX / 100.0) * metrics.widthPixels
-            val targetY = (expectedY / 100.0) * metrics.heightPixels
+            // Verify Position (Relative Percentage Check)
+            // Convert found pixel coordinates to percentage
+            val foundXPercent = (result.x.toDouble() / metrics.widthPixels.toDouble())
+            val foundYPercent = (result.y.toDouble() / metrics.heightPixels.toDouble())
             
-            // Tolerance: 25% of screen (Relaxed) or strict?
-            // "Perception" should be accurate.
-            val tolX = metrics.widthPixels * 0.1
-            val tolY = metrics.heightPixels * 0.1
+            // Expected is already in percentage (0-100), convert to 0.0-1.0
+            val targetXPercent = expectedX / 100.0
+            val targetYPercent = expectedY / 100.0
             
-            if (kotlin.math.abs(result.x - targetX) > tolX || kotlin.math.abs(result.y - targetY) > tolY) {
-                 Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: ${anchor.optString("label")} 預期:($targetX, $targetY) 實際:(${result.x}, ${result.y})")
+            // Tolerance: 15% (0.15) of screen dimension
+            // This handles UI shifts while preventing cross-screen false positives
+            val tolerance = 0.15
+            
+            val diffX = kotlin.math.abs(foundXPercent - targetXPercent)
+            val diffY = kotlin.math.abs(foundYPercent - targetYPercent)
+            
+            if (diffX > tolerance || diffY > tolerance) {
+                 Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: ${anchor.optString("label")} 預期:${(targetXPercent*100).toInt()}% 實際:${(foundXPercent*100).toInt()}% (容許:${(tolerance*100).toInt()}%)")
                  return false // Strict Check Enabled
             } else {
-                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: ${anchor.optString("label")} (${result.x.toInt()}, ${result.y.toInt()})")
+                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: ${anchor.optString("label")} 實際:${(foundXPercent*100).toInt()}%")
             }
         } else {
              Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查): ${anchor.optString("label")} (${result.x.toInt()}, ${result.y.toInt()})")
