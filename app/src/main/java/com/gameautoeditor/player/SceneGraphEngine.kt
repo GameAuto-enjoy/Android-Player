@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.3. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.6.4. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -101,46 +101,44 @@ class SceneGraphEngine(private val service: AutomationService) {
                 }
 
                 if (activeId != null) {
+                    val activeSceneName = getNodeName(activeId)
                     if (activeId != currentSceneId) {
-                         Log.i(TAG, "📍 狀態切換: $currentSceneId -> $activeId")
+                         Log.i(TAG, "[場景] 📍 切換: ${getNodeName(currentSceneId)} -> $activeSceneName")
                          currentSceneId = activeId
-                    } else {
-                         // Log.v(TAG, "⚓ 維持狀態: $activeId")
                     }
 
                     // 2. Decision (Brain)
                     val action = decideNextAction(screen, activeId!!)
                     
                     if (action != null) {
-                        Log.i(TAG, "⚡ [Action] 執行: '${action.region.optString("label")}' -> 前往: ${action.targetSceneId}")
-                        // Log.d(TAG, "   優先級: ${action.region.optJSONObject("schedule")?.optInt("priority", 5) ?: 5}")
-
+                        Log.i(TAG, "[場景: $activeSceneName] ⚡ 執行動作: '${action.region.optString("label")}' (目標: ${getNodeName(action.targetSceneId)})")
+                        
                         // 3. Action (Hand) - Handle CHECK_EXIT (No Click)
                         val actionType = action.region.optJSONObject("action")?.optString("type")
                         if (actionType != "CHECK_EXIT") {
                             val waitBefore = action.region.optLong("wait_before", 0L)
                             if (waitBefore > 0) {
-                                Log.i(TAG, "⏳ [執行前] 睡眠 ${waitBefore}ms...")
+                                Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行前等待: ${waitBefore}ms")
                                 Thread.sleep(waitBefore)
                             }
 
                             actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region)
                         } else {
-                            Log.i(TAG, "⏭️ 條件符合，執行純跳轉 (No Click)")
+                            Log.i(TAG, "[場景: $activeSceneName] ⏭️ 純跳轉 (無點擊)")
                         }
                         
                         applySideEffects(action.region)
                         updateHistory(action.region)
                         
                         val waitAfter = action.region.optLong("wait_after", 1000L)
-                        Log.i(TAG, "⏳ [執行後] 睡眠 ${waitAfter}ms...")
+                        Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行後冷卻: ${waitAfter}ms")
                         Thread.sleep(waitAfter)
                     } else {
                          // Idle in state (Waiting for cooldowns or trigger)
                          Thread.sleep(500)
                     }
                 } else {
-                    Log.i(TAG, "❓ [Unknown] 未知狀態 (無匹配特徵). 掃描中...")
+                    Log.i(TAG, "[場景: 未知] ❓ 無匹配特徵，掃描中...")
                     Thread.sleep(500)
                 }
                 
@@ -154,12 +152,19 @@ class SceneGraphEngine(private val service: AutomationService) {
     
     // --- Helper Methods ---
 
+    private fun getNodeName(id: String?): String {
+        if (id == null) return "未知"
+        val node = getNodeById(id) ?: return id
+        val label = node.optJSONObject("data")?.optString("label")
+        return if (label.isNullOrEmpty()) id else label
+    }
+
     private fun checkAppFocus(): Boolean {
         val originPkg = service.getOriginPackageName()
         val currentPkg = service.getFgPackageName()
         
         if (originPkg != null && currentPkg != null && originPkg != currentPkg && currentPkg != service.packageName) {
-            Log.w(TAG, "🛡️ 應用程式偏移: $currentPkg != $originPkg. 嘗試恢復...")
+            Log.w(TAG, "🛡️ 應用程式失焦: $currentPkg != $originPkg. 嘗試恢復...")
             try {
                 val intent = service.packageManager.getLaunchIntentForPackage(originPkg)
                 if (intent != null) {
@@ -183,7 +188,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             val node = nodes.getJSONObject(i)
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
                 if (perceptionSystem.isStateActive(screen, node, variables)) {
-                    Log.d(TAG, "⚡ 觸發全域狀態: ${node.getString("id")}")
+                    Log.d(TAG, "[場景] ⚡ 全域中斷: ${getNodeName(node.getString("id"))}")
                     return node.getString("id")
                 }
             }
@@ -194,7 +199,7 @@ class SceneGraphEngine(private val service: AutomationService) {
              val currNode = getNodeById(currentId)
              if (currNode != null) {
                  if (perceptionSystem.isStateActive(screen, currNode, variables)) {
-                     // Log.v(TAG, "⚓ Staying in Current State: $currentId")
+                     // Stay
                      return currentId
                  }
              }
@@ -208,7 +213,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue 
             
             if (perceptionSystem.isStateActive(screen, node, variables)) {
-                Log.d(TAG, "🔍 發現新狀態: $id")
+                Log.d(TAG, "[場景] 🔍 發現狀態: ${getNodeName(id)}")
                 return id
             }
         }
@@ -220,6 +225,7 @@ class SceneGraphEngine(private val service: AutomationService) {
 
     private fun decideNextAction(screen: Bitmap, sceneId: String): TransitionAction? {
         val currentNode = getNodeById(sceneId) ?: return null
+        val sceneName = getNodeName(sceneId)
         val regions = currentNode.optJSONObject("data")?.optJSONArray("regions")
         if (regions == null || regions.length() == 0) return null
         
@@ -278,9 +284,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                     // Check Match
                     if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor), variables)) {
                         isRunnable = false
-                        Log.d(TAG, "❌ 動作條件不符: ${r.optString("label")} (匹配失敗)")
+                        Log.d(TAG, "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符)")
                     } else {
-                        Log.v(TAG, "👁️ 條件觸發符合: ${r.optString("label")}")
+                        Log.v(TAG, "[場景: $sceneName] 👁️ 觸發條件符合: '${r.optString("label")}'")
                     }
                 }
             }
@@ -308,7 +314,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                 val old = variables[v] ?: 0
                 val newVal = (old - 1).coerceAtLeast(0)
                 variables[v] = newVal
-                Log.d(TAG, "📉 變數遞減: $v ($old -> $newVal)")
+                Log.d(TAG, "[邏輯] 📉 變數遞減: $v ($old -> $newVal)")
             }
         }
     }
