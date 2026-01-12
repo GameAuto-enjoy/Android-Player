@@ -140,7 +140,6 @@ class SceneGraphEngine(private val service: AutomationService) {
                          Thread.sleep(500)
                     }
                 } else {
-                } else {
                     Log.i(TAG, "❓ [Unknown] 未知狀態 (無匹配特徵). 掃描中...")
                     Thread.sleep(500)
                 }
