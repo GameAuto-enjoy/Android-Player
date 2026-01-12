@@ -252,7 +252,24 @@ class SceneGraphEngine(private val service: AutomationService) {
                 }
             }
             
-            if (isRunnable) candidates.add(r)
+            if (isRunnable) {
+                // SPECIAL: Check Exit Condition (Perception Trigger)
+                val actionType = r.optJSONObject("action")?.optString("type")
+                if (actionType == "CHECK_EXIT") {
+                    // Treat 'r' (Region) as an Anchor for perception
+                    // Need to ensure it has 'matchType' etc. at root level, which UI now provides.
+                    service.updateStatus("👁️ 檢查跳轉條件: ${r.optString("label")}")
+                    
+                    if (perceptionSystem.isStateActive(screen, createFakeNode(r), variables)) {
+                         Log.i(TAG, "🟢 條件符合，準備跳轉: ${r.optString("label")} -> ${r.optString("target")}")
+                         candidates.add(r)
+                    } else {
+                         // Log.v(TAG, "⚪ 條件不符: ${r.optString("label")}")
+                    }
+                } else {
+                     candidates.add(r) 
+                }
+            }
         }
         
         if (candidates.isEmpty()) return null
@@ -302,5 +319,15 @@ class SceneGraphEngine(private val service: AutomationService) {
             if (node.getString("id") == id) return node
         }
         return null
+    }
+    private fun createFakeNode(anchorRegion: JSONObject): JSONObject {
+        val fakeData = JSONObject()
+        val anchors = org.json.JSONArray()
+        anchors.put(anchorRegion)
+        fakeData.put("anchors", anchors)
+        
+        val fakeNode = JSONObject()
+        fakeNode.put("data", fakeData)
+        return fakeNode
     }
 }

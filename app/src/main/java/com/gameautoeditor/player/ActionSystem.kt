@@ -33,6 +33,11 @@ class ActionSystem(private val service: AutomationService) {
             return
         }
 
+        if (type == "CHECK_EXIT") {
+            Log.i(TAG, "⚡ 條件跳轉觸發，跳過手勢")
+            return
+        }
+
         // 2. Calculate Coordinates with Randomization
         val targetPoint = calculateTargetPoint(region)
         
