@@ -21,6 +21,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     data class ExecutionData(var lastRunTime: Long = 0, var runCount: Int = 0)
     private val executionHistory = mutableMapOf<String, ExecutionData>()
     private val variables = mutableMapOf<String, Int>()
+    private var previousSceneId: String? = null
 
     fun start(jsonString: String) {
         if (isRunning) return
@@ -41,7 +42,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.8. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.9 (Smart Wait). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -83,6 +84,25 @@ class SceneGraphEngine(private val service: AutomationService) {
                     Thread.sleep(500)
                     continue
                 }
+
+                // --- Smart Transition Wait ---
+                // If we just transitioned (within 3s grace period) but the Previous Scene is still visible,
+                // we should WAIT and not perform any actions in the new scene yet.
+                if (previousSceneId != null && System.currentTimeMillis() - lastTransitionTime < 3000) {
+                    val prevNode = getNodeById(previousSceneId!!)
+                    if (prevNode != null) {
+                        val prevName = getNodeName(previousSceneId)
+                        // Quick check: Is previous scene still valid?
+                        if (perceptionSystem.isStateActive(screen, prevNode, variables, prevName)) {
+                            Log.i(TAG, "[FSM] ⏳ 畫面卡在 [$prevName] (Loading?). 自動延長等待...")
+                            lastTransitionTime = System.currentTimeMillis() // Extend grace period
+                            screen.recycle()
+                            Thread.sleep(500)
+                            continue // Skip perception/action for this frame
+                        }
+                    }
+                }
+                // -----------------------------
 
                 // Identify State (Where am I?)
                 // Pass 'variables' to allow Perception to update them (Extraction)
@@ -136,9 +156,10 @@ class SceneGraphEngine(private val service: AutomationService) {
 
                         // Predictive Transition: Immediately switch state to Target
                         if (action.targetSceneId != null && action.targetSceneId != currentSceneId) {
+                             Log.i(TAG, "[FSM] 🔮 預測性切換: $activeSceneName -> ${getNodeName(action.targetSceneId)}")
+                             previousSceneId = currentSceneId
                              currentSceneId = action.targetSceneId
                              lastTransitionTime = System.currentTimeMillis()
-                             Log.i(TAG, "[FSM] 🔮 預測性切換: $activeSceneName -> ${getNodeName(currentSceneId)}")
                         }
                     } else {
                          // Idle in state (Waiting for cooldowns or trigger)
