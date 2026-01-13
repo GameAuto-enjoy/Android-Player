@@ -176,10 +176,10 @@ class PerceptionSystem(private val service: AutomationService) {
             val diffY = kotlin.math.abs(foundYPercent - targetYPercent)
             
             if (diffX > toleranceParams || diffY > toleranceParams) {
-                 Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: 預期:${(targetXPercent*100).toInt()}% 實際:${(foundXPercent*100).toInt()}%")
+                 Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: 預期(%):(${ (targetXPercent*100).toInt() }, ${ (targetYPercent*100).toInt() }) 實際:(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() }) 容許:${ (toleranceParams*100).toInt() }%")
                  return false
             } else {
-                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: 實際:${(foundXPercent*100).toInt()}%")
+                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: 實際(%):(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() })")
             }
         } else {
              Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查)")
