@@ -42,7 +42,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.10 (Smart Wait v2). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.11 (Relaxed Check). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
