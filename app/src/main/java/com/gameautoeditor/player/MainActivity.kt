@@ -30,6 +30,9 @@ class MainActivity : AppCompatActivity() {
     private val PREFS_NAME = "GameAutoEditor"
     private val API_BOOT_URL = "https://game-auto-editor.vercel.app/api/device-boot"
     // private val API_BOOT_URL = "http://10.0.2.2:5001/api/client-boot" // Local Dev
+    
+    private var lastUpdateFile: File? = null
+    private val REQUEST_CODE_INSTALL_PERMISSION = 999
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,6 +75,15 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateServiceStatus()
+        
+        // Check if returning from "Install Unknown Apps" screen
+        if (lastUpdateFile != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (packageManager.canRequestPackageInstalls()) {
+                Log.i(TAG, "Install permission granted in onResume, retrying install...")
+                installApk(lastUpdateFile!!)
+                lastUpdateFile = null // Clear
+            }
+        }
     }
 
     private fun bootstrap() {
@@ -273,6 +285,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun installApk(file: File) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!packageManager.canRequestPackageInstalls()) {
+                Log.w(TAG, "Requesting install packages permission")
+                lastUpdateFile = file // Save for onResume
+                
+                Toast.makeText(this, "請允許安裝未知來源應用程式以進行更新", Toast.LENGTH_LONG).show()
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+                return
+            }
+        }
+
         try {
             val uri = FileProvider.getUriForFile(this, "${packageName}.provider", file)
             val intent = Intent(Intent.ACTION_VIEW)
