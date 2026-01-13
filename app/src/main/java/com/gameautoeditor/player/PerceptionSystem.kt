@@ -125,34 +125,30 @@ class PerceptionSystem(private val service: AutomationService) {
                     val devH = metrics.heightPixels.toDouble()
                     
                     // --- X Axis Logic ---
-                    val targetDevX: Double
                     // Left (< 33%)
-                    if (expectedX < 33.0) {
-                        targetDevX = srcPixelX * scale // Distance from Left
+                    val targetDevX: Double = if (expectedX < 33.0) {
+                        srcPixelX * scale // Distance from Left
                     } 
                     // Right (> 66%)
                     else if (expectedX > 66.0) {
                         val distFromRight = nodeW - srcPixelX
-                        targetDevX = devW - (distFromRight * scale) // Distance from Right
+                        devW - (distFromRight * scale) // Distance from Right
                     } 
                     // Center
                     else {
-                        targetDevX = devW / 2.0 // Center aligned approximation? Or just percentage
-                        // Better: center point travels from center
-                         val distFromCenter = srcPixelX - (nodeW / 2.0)
-                         targetDevX = (devW / 2.0) + (distFromCenter * scale)
+                        val distFromCenter = srcPixelX - (nodeW / 2.0)
+                        (devW / 2.0) + (distFromCenter * scale)
                     }
 
                     // --- Y Axis Logic ---
-                     val targetDevY: Double
-                     if (expectedY < 33.0) { // Top
-                         targetDevY = srcPixelY * scale
+                     val targetDevY: Double = if (expectedY < 33.0) { // Top
+                         srcPixelY * scale
                      } else if (expectedY > 66.0) { // Bottom
                          val distFromBottom = nodeH - srcPixelY
-                         targetDevY = devH - (distFromBottom * scale)
+                         devH - (distFromBottom * scale)
                      } else {
                          val distFromCenterY = srcPixelY - (nodeH / 2.0)
-                         targetDevY = (devH / 2.0) + (distFromCenterY * scale)
+                         (devH / 2.0) + (distFromCenterY * scale)
                      }
                      
                      // Absolute Difference Check (Pixels)
