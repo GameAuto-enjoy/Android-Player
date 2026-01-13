@@ -14,7 +14,7 @@ class ActionSystem(private val service: AutomationService) {
      * 執行動作 (Hands)
      * 封裝了點擊、滑動等操作，並加入擬人化隨機偏移
      */
-    fun performAction(actionConfig: JSONObject, region: JSONObject) {
+    fun performAction(actionConfig: JSONObject, region: JSONObject, nodeRes: JSONObject? = null) {
         val type = actionConfig.optString("type", "CLICK")
         val label = region.optString("label", "Unknown")
         val params = actionConfig.optJSONObject("params")
@@ -38,7 +38,7 @@ class ActionSystem(private val service: AutomationService) {
         }
 
         // 2. Calculate Coordinates with Randomization
-        val targetPoint = calculateTargetPoint(region)
+        val targetPoint = calculateTargetPoint(region, nodeRes)
         
         // 3. Dispatch Gesture
         val path = Path()
@@ -110,35 +110,101 @@ class ActionSystem(private val service: AutomationService) {
 
     private data class Point(val x: Float, val y: Float)
 
-    private fun calculateTargetPoint(region: JSONObject): Point {
+    private fun calculateTargetPoint(region: JSONObject, nodeRes: JSONObject?): Point {
         val xPercent = region.optDouble("x", 0.0)
         val yPercent = region.optDouble("y", 0.0)
         val wPercent = region.optDouble("w", 0.0)
         val hPercent = region.optDouble("h", 0.0)
 
         val metrics = service.resources.displayMetrics
-        val screenW = metrics.widthPixels
-        val screenH = metrics.heightPixels
+        val screenW = metrics.widthPixels.toDouble()
+        val screenH = metrics.heightPixels.toDouble()
 
-        // Calculate Bounds
-        val left = (xPercent / 100.0 * screenW)
-        val top = (yPercent / 100.0 * screenH)
-        val width = (wPercent / 100.0 * screenW)
-        val height = (hPercent / 100.0 * screenH)
+        var left = 0.0
+        var top = 0.0
+        var width = 0.0
+        var height = 0.0
+
+        if (nodeRes != null) {
+            val nodeW = nodeRes.optDouble("w", 0.0)
+            val nodeH = nodeRes.optDouble("h", 0.0)
+            
+            if (nodeW > 0.0 && nodeH > 0.0) {
+                 val scaleX = screenW / nodeW
+                 // Use Scale based on Width (usually scenes are fit to width or height)
+                 // Or we can use independent scales if stretching? No, games usually aspect fit.
+                 // Let's use the same logic as Perception: Scale from Width for now.
+                 // Wait, for Action, we need exact coordinates.
+                 
+                 val scale = screenW / nodeW 
+                 
+                 // --- Smart Alignment Calculation ---
+                 
+                 // WIDTH / X
+                 val srcX = xPercent / 100.0 * nodeW
+                 val srcW = wPercent / 100.0 * nodeW
+                 
+                 // Calculate Target X
+                 if (xPercent < 33.0) { // Left Aligned
+                     left = srcX * scale
+                 } else if (xPercent > 66.0) { // Right Aligned
+                     val distRight = nodeW - srcX
+                     left = screenW - (distRight * scale)
+                 } else { // Center Aligned
+                     val distCenter = srcX - (nodeW / 2.0)
+                     left = (screenW / 2.0) + (distCenter * scale)
+                 }
+                 
+                 width = srcW * scale
+                 
+                 // HEIGHT / Y
+                 // Usually games maintain Aspect Ratio, so we should use same scale?
+                 // But device might be taller/shorter.
+                 // Let's use smart vertical alignment too.
+                 
+                 val srcY = yPercent / 100.0 * nodeH
+                 val srcH = hPercent / 100.0 * nodeH
+                 
+                 if (yPercent < 33.0) { // Top Aligned
+                     top = srcY * scale
+                 } else if (yPercent > 66.0) { // Bottom Aligned
+                     val distBottom = nodeH - srcY
+                     top = screenH - (distBottom * scale)
+                 } else { // Center
+                     val distCenterY = srcY - (nodeH / 2.0)
+                     top = (screenH / 2.0) + (distCenterY * scale)
+                 }
+                 
+                 height = srcH * scale
+            } else {
+                // Fallback
+                left = (xPercent / 100.0 * screenW)
+                top = (yPercent / 100.0 * screenH)
+                width = (wPercent / 100.0 * screenW)
+                height = (hPercent / 100.0 * screenH)
+            }
+        } else {
+             // Fallback: Pure Percentage
+             left = (xPercent / 100.0 * screenW)
+             top = (yPercent / 100.0 * screenH)
+             width = (wPercent / 100.0 * screenW)
+             height = (hPercent / 100.0 * screenH)
+        }
 
         // Gaussian Randomization (Center biased)
-        // Mean = center, StdDev = width/6 (99% within bounds typically)
-        
         val centerX = left + width / 2
         val centerY = top + height / 2
         
-        // Simple randomization: Center +/- 30% of size uniformly
-        // Logic: Don't click exact center
-        
-        val randomX = centerX + (Random.nextDouble() - 0.5) * (width * 0.6) 
-        val randomY = centerY + (Random.nextDouble() - 0.5) * (height * 0.6)
+        // Ensure click is within bounds? or mostly within bounds.
+        // Random +/- 40% of size
+        val randomX = centerX + (Random.nextDouble() - 0.5) * (width * 0.8) 
+        val randomY = centerY + (Random.nextDouble() - 0.5) * (height * 0.8)
 
-        return Point(randomX.toFloat(), randomY.toFloat())
+        // Clamp to screen
+        val finalX = randomX.coerceIn(0.0, screenW - 1).toFloat()
+        val finalY = randomY.coerceIn(0.0, screenH - 1).toFloat()
+
+        return Point(finalX, finalY)
     }
 
     private fun randomDuration(min: Long, max: Long): Long {

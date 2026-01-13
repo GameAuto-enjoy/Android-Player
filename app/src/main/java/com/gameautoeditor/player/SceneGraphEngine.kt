@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.2. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.3. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -122,7 +122,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                                 Thread.sleep(waitBefore)
                             }
 
-                            actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region)
+                            actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region, getNodeById(activeId)?.optJSONObject("resolution"))
                         } else {
                             Log.i(TAG, "[場景: $activeSceneName] ⏭️ 純跳轉 (無點擊)")
                         }
