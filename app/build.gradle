@@ -13,6 +13,12 @@ android {
         targetSdk 34
         versionCode 50
         versionName "1.7.3"
+        
+        ndk {
+            // Only support ARM devices (Most Android phones & Emulators)
+            // Removes x86/x86_64 Bloat (~50% size reduction)
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
     }
 
     signingConfigs {
