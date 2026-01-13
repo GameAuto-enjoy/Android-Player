@@ -328,6 +328,7 @@ class PerceptionSystem(private val service: AutomationService) {
             conn.requestMethod = "POST"
             conn.doOutput = true
             conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("x-api-secret", "gae-app-secret-v1") // Authorized App Secret
             conn.connectTimeout = 5000
             conn.readTimeout = 10000
 
