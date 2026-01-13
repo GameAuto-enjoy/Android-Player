@@ -104,6 +104,12 @@ class PerceptionSystem(private val service: AutomationService) {
             return false
         }
         
+        // High Score Pardon (User Request: > 0.9 means success regardless of position)
+        if (result.score >= 0.9) {
+             Log.i(TAG, "[場景: $sceneName] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
+             return true
+        }
+        
         // Verify Position
         val metrics = service.resources.displayMetrics
         val expectedX = anchor.optDouble("x", -1.0)
