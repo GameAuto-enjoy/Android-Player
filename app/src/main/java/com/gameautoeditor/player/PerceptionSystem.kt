@@ -36,7 +36,7 @@ class PerceptionSystem(private val service: AutomationService) {
         for (i in 0 until totalAnchors) {
             val anchor = anchors.getJSONObject(i)
             // Use specialized check that can update variables
-            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale)) {
+            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale, nodeRes)) {
                 matchCount++
             }
         }
@@ -50,7 +50,7 @@ class PerceptionSystem(private val service: AutomationService) {
         // ImageMatcher has its own logic, but we might want to clear local cache
     }
 
-    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?): Boolean {
+    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?, nodeRes: JSONObject?): Boolean {
         val matchType = anchor.optString("matchType", "image")
         val variableName = anchor.optString("variableName")
         
@@ -58,7 +58,7 @@ class PerceptionSystem(private val service: AutomationService) {
             "color" -> Pair(checkColor(screen, anchor), null)
             "text" -> checkText(screen, anchor)
             "ai" -> checkAi(screen, anchor)
-            else -> Pair(checkImage(screen, anchor, sceneName, scale), null)
+            else -> Pair(checkImage(screen, anchor, sceneName, scale, nodeRes), null)
         }
 
         // If defined, EXTRACT value into variable
@@ -82,7 +82,7 @@ class PerceptionSystem(private val service: AutomationService) {
 
     // --- Specific Perception Methods ---
 
-    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?): Boolean {
+    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?, nodeRes: JSONObject?): Boolean {
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) return false
 
@@ -101,11 +101,8 @@ class PerceptionSystem(private val service: AutomationService) {
         // Use ImageMatcher (OpenCV)
         val result = ImageMatcher.findTemplate(screen, template, 0.7, scale)
         if (result == null) {
-            // Log.d(TAG, "❌ 圖片匹配失敗: ${anchor.optString("label")} (信心度不足)")
             return false
         }
-        
-        // Log.d(TAG, "✅ 圖片匹配成功: ${anchor.optString("label")} 座標:(${result.x.toInt()}, ${result.y.toInt()})")
         
         // Verify Position
         val metrics = service.resources.displayMetrics
@@ -113,30 +110,83 @@ class PerceptionSystem(private val service: AutomationService) {
         val expectedY = anchor.optDouble("y", -1.0)
         
         if (expectedX >= 0 && expectedY >= 0) {
-            // Verify Position (Relative Percentage Check)
-            // Convert found pixel coordinates to percentage
+            val toleranceParams = 0.15 // 15% Screen Tolerance base
+            
+            // SMART ALIGNMENT CHECK (Resolution Aware)
+            if (nodeRes != null && scale != null) {
+                val nodeW = nodeRes.optDouble("w", 0.0)
+                val nodeH = nodeRes.optDouble("h", 0.0)
+                
+                if (nodeW > 0 && nodeH > 0) {
+                    val srcPixelX = (expectedX / 100.0) * nodeW
+                    val srcPixelY = (expectedY / 100.0) * nodeH
+                    
+                    val devW = metrics.widthPixels.toDouble()
+                    val devH = metrics.heightPixels.toDouble()
+                    
+                    // --- X Axis Logic ---
+                    val targetDevX: Double
+                    // Left (< 33%)
+                    if (expectedX < 33.0) {
+                        targetDevX = srcPixelX * scale // Distance from Left
+                    } 
+                    // Right (> 66%)
+                    else if (expectedX > 66.0) {
+                        val distFromRight = nodeW - srcPixelX
+                        targetDevX = devW - (distFromRight * scale) // Distance from Right
+                    } 
+                    // Center
+                    else {
+                        targetDevX = devW / 2.0 // Center aligned approximation? Or just percentage
+                        // Better: center point travels from center
+                         val distFromCenter = srcPixelX - (nodeW / 2.0)
+                         targetDevX = (devW / 2.0) + (distFromCenter * scale)
+                    }
+
+                    // --- Y Axis Logic ---
+                     val targetDevY: Double
+                     if (expectedY < 33.0) { // Top
+                         targetDevY = srcPixelY * scale
+                     } else if (expectedY > 66.0) { // Bottom
+                         val distFromBottom = nodeH - srcPixelY
+                         targetDevY = devH - (distFromBottom * scale)
+                     } else {
+                         val distFromCenterY = srcPixelY - (nodeH / 2.0)
+                         targetDevY = (devH / 2.0) + (distFromCenterY * scale)
+                     }
+                     
+                     // Absolute Difference Check (Pixels)
+                     // Allow 15% of device dimension as tolerance
+                     val absTolX = devW * toleranceParams
+                     val absTolY = devH * toleranceParams
+                     
+                     if (kotlin.math.abs(result.x - targetDevX) > absTolX || kotlin.math.abs(result.y - targetDevY) > absTolY) {
+                         Log.w(TAG, "[場景: $sceneName] ❌ (Smart)位置偏差: 預期(${targetDevX.toInt()}, ${targetDevY.toInt()}) 實際(${result.x.toInt()}, ${result.y.toInt()})")
+                         return false
+                     } else {
+                         Log.d(TAG, "[場景: $sceneName] ✅ (Smart)位置符合")
+                         return true
+                     }
+                }
+            }
+
+            // Fallback: Percentage Check
             val foundXPercent = (result.x.toDouble() / metrics.widthPixels.toDouble())
             val foundYPercent = (result.y.toDouble() / metrics.heightPixels.toDouble())
-            
-            // Expected is already in percentage (0-100), convert to 0.0-1.0
             val targetXPercent = expectedX / 100.0
             val targetYPercent = expectedY / 100.0
-            
-            // Tolerance: 15% (0.15) of screen dimension
-            // This handles UI shifts while preventing cross-screen false positives
-            val tolerance = 0.15
             
             val diffX = kotlin.math.abs(foundXPercent - targetXPercent)
             val diffY = kotlin.math.abs(foundYPercent - targetYPercent)
             
-            if (diffX > tolerance || diffY > tolerance) {
-                 Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: ${anchor.optString("label")} 預期:${(targetXPercent*100).toInt()}% 實際:${(foundXPercent*100).toInt()}% (容許:${(tolerance*100).toInt()}%)")
-                 return false // Strict Check Enabled
+            if (diffX > toleranceParams || diffY > toleranceParams) {
+                 Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: 預期:${(targetXPercent*100).toInt()}% 實際:${(foundXPercent*100).toInt()}%")
+                 return false
             } else {
-                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: ${anchor.optString("label")} 實際:${(foundXPercent*100).toInt()}%")
+                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: 實際:${(foundXPercent*100).toInt()}%")
             }
         } else {
-             Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查): ${anchor.optString("label")} (${result.x.toInt()}, ${result.y.toInt()})")
+             Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查)")
         }
         
         return true
