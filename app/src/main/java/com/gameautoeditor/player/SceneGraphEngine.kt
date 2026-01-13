@@ -269,26 +269,47 @@ class SceneGraphEngine(private val service: AutomationService) {
             
             if (isRunnable) {
                 // Perception Trigger Check (Eyes on Hand)
-                val perception = r.optJSONObject("perception")
-                if (perception != null) {
-                    // Combine Region Coords with Perception Config
-                    val anchor = JSONObject()
-                    anchor.put("x", r.optInt("x", 0))
-                    anchor.put("y", r.optInt("y", 0))
-                    anchor.put("w", r.optInt("w", 0))
-                    anchor.put("h", r.optInt("h", 0))
-                    
-                    val keys = perception.keys()
-                    while (keys.hasNext()) {
-                        val key = keys.next()
-                        anchor.put(key, perception.get(key))
+                // Support Multiple Perceptions (OR Logic)
+                
+                val perceptionObj = r.optJSONObject("perception")
+                val perceptionArr = r.optJSONArray("perception")
+                
+                val perceptions = mutableListOf<JSONObject>()
+                if (perceptionArr != null) {
+                    for (k in 0 until perceptionArr.length()) {
+                        perceptions.add(perceptionArr.getJSONObject(k))
                     }
-
-                    // Check Match
+                } else if (perceptionObj != null) {
+                    perceptions.add(perceptionObj)
+                }
+                
+                if (perceptions.isNotEmpty()) {
                     val resolution = currentNode.optJSONObject("resolution")
-                    if (!perceptionSystem.isStateActive(screen, createFakeNode(anchor, resolution), variables, sceneName)) {
+                    var anyMatch = false
+                    
+                    for (p in perceptions) {
+                         // Combine Region Coords with Perception Config
+                        val anchor = JSONObject()
+                        anchor.put("x", r.optInt("x", 0))
+                        anchor.put("y", r.optInt("y", 0))
+                        anchor.put("w", r.optInt("w", 0))
+                        anchor.put("h", r.optInt("h", 0))
+                        
+                        val keys = p.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            anchor.put(key, p.get(key))
+                        }
+                        
+                        if (perceptionSystem.isStateActive(screen, createFakeNode(anchor, resolution), variables, sceneName)) {
+                            anyMatch = true
+                            break // One match is enough (OR)
+                        }
+                    }
+                    
+                    if (!anyMatch) {
                         isRunnable = false
-                        Log.d(TAG, "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符)")
+                        Log.d(TAG, "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符 - 檢查了 ${perceptions.size} 個條件)")
                     } else {
                         Log.v(TAG, "[場景: $sceneName] 👁️ 觸發條件符合: '${r.optString("label")}'")
                     }
