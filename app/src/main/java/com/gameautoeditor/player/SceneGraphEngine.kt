@@ -42,7 +42,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.9 (Smart Wait). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.10 (Smart Wait v2). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -85,20 +85,39 @@ class SceneGraphEngine(private val service: AutomationService) {
                     continue
                 }
 
-                // --- Smart Transition Wait ---
-                // If we just transitioned (within 3s grace period) but the Previous Scene is still visible,
-                // we should WAIT and not perform any actions in the new scene yet.
+                // --- Smart Transition Wait (v2: Overlay Support) ---
                 if (previousSceneId != null && System.currentTimeMillis() - lastTransitionTime < 3000) {
-                    val prevNode = getNodeById(previousSceneId!!)
-                    if (prevNode != null) {
-                        val prevName = getNodeName(previousSceneId)
-                        // Quick check: Is previous scene still valid?
-                        if (perceptionSystem.isStateActive(screen, prevNode, variables, prevName)) {
-                            Log.i(TAG, "[FSM] ⏳ 畫面卡在 [$prevName] (Loading?). 自動延長等待...")
-                            lastTransitionTime = System.currentTimeMillis() // Extend grace period
-                            screen.recycle()
-                            Thread.sleep(500)
-                            continue // Skip perception/action for this frame
+                    var targetResolved = false
+                    
+                    // 1. Priority Check: Is Target (currentSceneId) ALREADY visible?
+                    // If yes, it means we are in an Overlay situation (New window popped up, old background still there).
+                    // We should accept this as "Arrived" and NOT wait.
+                    val targetNode = if (currentSceneId != null) getNodeById(currentSceneId!!) else null
+                    if (targetNode != null) {
+                        val hasAnchors = (targetNode.optJSONObject("data")?.optJSONArray("anchors")?.length() ?: 0) > 0
+                        
+                        if (hasAnchors) {
+                            val targetName = getNodeName(currentSceneId)
+                            if (perceptionSystem.isStateActive(screen, targetNode, variables, targetName)) {
+                                Log.d(TAG, "[FSM] 🚀 目標場景 [$targetName] 已確認出現 (Overlay mode). 停止等待.")
+                                lastTransitionTime = 0 // Clear timer, transition complete
+                                targetResolved = true
+                            }
+                        }
+                    }
+
+                    // 2. Fallback: If Target NOT visible (or Blind), check if Previous Scene is STUCK.
+                    if (!targetResolved) {
+                        val prevNode = getNodeById(previousSceneId!!)
+                        if (prevNode != null) {
+                            val prevName = getNodeName(previousSceneId)
+                            if (perceptionSystem.isStateActive(screen, prevNode, variables, prevName)) {
+                                Log.i(TAG, "[FSM] ⏳ 轉場中... 目標未現，且畫面仍停在 [$prevName]. 延長等待...")
+                                lastTransitionTime = System.currentTimeMillis() // Keep extending
+                                screen.recycle()
+                                Thread.sleep(500)
+                                continue // Skip this frame
+                            }
                         }
                     }
                 }
