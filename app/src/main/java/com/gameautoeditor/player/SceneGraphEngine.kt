@@ -41,7 +41,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.6. 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.7. 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -133,6 +133,13 @@ class SceneGraphEngine(private val service: AutomationService) {
                         val waitAfter = action.region.optLong("wait_after", 1000L)
                         Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行後冷卻: ${waitAfter}ms")
                         Thread.sleep(waitAfter)
+
+                        // Predictive Transition: Immediately switch state to Target
+                        if (action.targetSceneId != null && action.targetSceneId != currentSceneId) {
+                             currentSceneId = action.targetSceneId
+                             lastTransitionTime = System.currentTimeMillis()
+                             Log.i(TAG, "[FSM] 🔮 預測性切換: $activeSceneName -> ${getNodeName(currentSceneId)}")
+                        }
                     } else {
                          // Idle in state (Waiting for cooldowns or trigger)
                          Thread.sleep(500)
@@ -180,6 +187,8 @@ class SceneGraphEngine(private val service: AutomationService) {
         return true
     }
 
+    private var lastTransitionTime: Long = 0L
+
     private fun identifyScene(screen: Bitmap, currentId: String?): String? {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         
@@ -195,13 +204,20 @@ class SceneGraphEngine(private val service: AutomationService) {
             }
         }
         
-        // Priority 2: Current Scene (Stability)
+        // Priority 2: Current Scene (Stability & Grace Period)
         if (currentId != null) {
              val currNode = getNodeById(currentId)
              if (currNode != null) {
                  val sceneName = getNodeName(currentId)
                  if (perceptionSystem.isStateActive(screen, currNode, variables, sceneName)) {
                      // Stay
+                     return currentId
+                 }
+                 
+                 // GRACE PERIOD: If we just transitioned, hold this state blindly for 3 seconds
+                 // This prevents falling back to the previous scene while the new one loads.
+                 if (System.currentTimeMillis() - lastTransitionTime < 3000) {
+                     Log.d(TAG, "[場景] 🛡️ 轉換保護: 維持在 $sceneName (等待畫面載入...)")
                      return currentId
                  }
              }
