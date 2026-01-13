@@ -116,7 +116,7 @@ class PerceptionSystem(private val service: AutomationService) {
         val expectedY = anchor.optDouble("y", -1.0)
         
         if (expectedX >= 0 && expectedY >= 0) {
-            val toleranceParams = 0.15 // 15% Screen Tolerance base
+            val toleranceParams = 0.25 // 25% Screen Tolerance (Relaxed for Aspect Ratio)
             
             // SMART ALIGNMENT CHECK (Resolution Aware)
             if (nodeRes != null && scale != null) {
