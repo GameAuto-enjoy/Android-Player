@@ -183,7 +183,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     private fun identifyScene(screen: Bitmap, currentId: String?): String? {
         val nodes = graphData?.optJSONArray("nodes") ?: return null
         
-        // Priority 1: Global Scenes
+        // Priority 1: Global Scenes (Interrupts)
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
             if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) {
@@ -207,17 +207,55 @@ class SceneGraphEngine(private val service: AutomationService) {
              }
         }
         
-        // Priority 3: Other Scenes
+        // Priority 3: Hierarchical Search (Neighbors + Root)
+        // If we are in a state, only look where we can go, plus Root (in case of reset)
+        // If we are lost (currentId == null), look everywhere (or just Root?) -> Let's look Root Priority, then All.
+        
+        val candidates = mutableSetOf<String>()
+        var foundRootId: String? = null
+        
+        if (currentId != null) {
+            // 3a. Add Neighbors
+            val currNode = getNodeById(currentId)
+            val regions = currNode?.optJSONObject("data")?.optJSONArray("regions")
+            if (regions != null) {
+                for (i in 0 until regions.length()) {
+                    val target = regions.getJSONObject(i).optString("target")
+                    if (target.isNotEmpty() && target != currentId) {
+                        candidates.add(target)
+                    }
+                }
+            }
+        }
+        
+        // Always add Root to candidates (Common fallback)
         for (i in 0 until nodes.length()) {
-            val node = nodes.getJSONObject(i)
-            val id = node.getString("id")
+             val node = nodes.getJSONObject(i)
+             val isRoot = node.optJSONObject("data")?.optBoolean("isRoot") == true
+             if (isRoot) {
+                 val rootId = node.getString("id")
+                 if (rootId != currentId) {
+                     foundRootId = rootId
+                     candidates.add(rootId)
+                 }
+             }
+             // If we are completely lost, add everything?
+             if (currentId == null) {
+                 candidates.add(node.getString("id"))
+             }
+        }
+
+        // Execute Search on Candidates
+        for (id in candidates) {
+            val node = getNodeById(id) ?: continue
+            // Skip globals (already checked) and current (already checked)
+            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue
             if (id == currentId) continue
-            if (node.optJSONObject("data")?.optBoolean("isGlobal") == true) continue 
             
             val sceneName = getNodeName(id)
             if (perceptionSystem.isStateActive(screen, node, variables, sceneName)) {
-                Log.d(TAG, "[場景] 🔍 發現狀態: $sceneName")
-                return id
+                 Log.d(TAG, "[場景] 🔍 發現狀態: $sceneName")
+                 return id
             }
         }
         
