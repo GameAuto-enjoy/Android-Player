@@ -16,11 +16,17 @@ class PerceptionSystem(private val service: AutomationService) {
      * 感知 (Eyes): 檢查當前畫面是否符合某個 State (Scene Node) 的特徵
      */
     fun isStateActive(screen: Bitmap, stateNode: JSONObject, variables: MutableMap<String, Int>, sceneName: String = "Unknown"): Boolean {
-        val anchors = stateNode.optJSONObject("data")?.optJSONArray("anchors")
+        val data = stateNode.optJSONObject("data")
+        val anchors = data?.optJSONArray("anchors")
         if (anchors == null || anchors.length() == 0) return false
 
         var matchCount = 0
         val totalAnchors = anchors.length()
+
+        // Multi-Feature Logic (v1.7.14)
+        // Default (0 or missing): Require ALL matches
+        var minMatches = data.optInt("minMatches", totalAnchors)
+        if (minMatches <= 0) minMatches = totalAnchors
 
         // Calculate Expected Scale
         // Scale = Device.Width / Node.Resolution.Width
@@ -41,8 +47,8 @@ class PerceptionSystem(private val service: AutomationService) {
             }
         }
 
-        // Strict: All anchors must match
-        return matchCount == totalAnchors
+        // Return true if threshold met
+        return matchCount >= minMatches
     }
 
     fun clearCache() {
