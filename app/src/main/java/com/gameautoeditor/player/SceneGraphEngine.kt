@@ -61,7 +61,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.23 (Vector Fix). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.24 (AppCompat). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -396,6 +396,20 @@ class SceneGraphEngine(private val service: AutomationService) {
         for (i in 0 until regions.length()) {
             val r = regions.getJSONObject(i)
             if (!r.optBoolean("enabled", true)) continue
+            
+            // 0. User Override Check (Runtime Toggle)
+            // Variable: "enable_{label}" (1=On, 0=Off). Default to On if null.
+            val label = r.optString("label")
+            if (label.isNotEmpty()) {
+                val overrideKey = "enable_$label"
+                if (variables.containsKey(overrideKey)) {
+                    val overrideVal = variables[overrideKey] ?: 1
+                    if (overrideVal == 0) {
+                        Log.d(TAG, "[場景: $sceneName] 🚫 用戶設定停用: '$label' (變數: $overrideKey=0)")
+                        continue
+                    }
+                }
+            }
             
             var isRunnable = true
             

@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
 
@@ -15,22 +15,22 @@
         android:gravity="center_vertical">
 
         <!-- Close/Collapse Button -->
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnClose"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_control_close"
+            app:srcCompat="@drawable/ic_control_close"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
             android:padding="8dp"
             android:contentDescription="Close Menu"/>
 
         <!-- Play/Pause Button -->
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnPlayPause"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_control_play"
+            app:srcCompat="@drawable/ic_control_play"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
             android:padding="4dp"
@@ -38,11 +38,11 @@
             android:layout_marginStart="8dp"/>
 
         <!-- Stop Button -->
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnStop"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_control_stop"
+            app:srcCompat="@drawable/ic_control_stop"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
             android:padding="4dp"
@@ -50,11 +50,11 @@
             android:layout_marginStart="8dp"/>
             
         <!-- Settings/Schedule Button -->
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnSettings"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_control_settings"
+            app:srcCompat="@drawable/ic_control_settings"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
             android:padding="6dp"
@@ -71,11 +71,11 @@
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
-        <ImageView
+        <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/floating_icon"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:src="@drawable/ic_floating_logo"
+            app:srcCompat="@drawable/ic_floating_logo"
             android:background="@drawable/bg_floating_circle"
             android:contentDescription="Floating Icon"
             android:scaleType="fitCenter"
