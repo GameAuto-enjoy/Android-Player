@@ -48,7 +48,10 @@ class PerceptionSystem(private val service: AutomationService) {
         return matchCount >= minMatches
     }
     
-    // ... clearCache ...
+    fun clearCache() {
+        templateCache.clear()
+        // ImageMatcher has its own logic, but we might want to clear local cache
+    }
 
     private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean): Boolean {
         val matchType = anchor.optString("matchType", "image")
