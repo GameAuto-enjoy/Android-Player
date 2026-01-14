@@ -11,8 +11,8 @@ android {
         applicationId "com.gameautoeditor.player"
         minSdk 24
         targetSdk 34
-        versionCode 64
-        versionName "1.7.17"
+        versionCode 65
+        versionName "1.7.18"
         
         ndk {
             // Only support ARM devices (Most Android phones & Emulators)

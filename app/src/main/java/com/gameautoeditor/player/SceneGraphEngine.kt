@@ -59,7 +59,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.17 (Smart Sleep). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.18 (Quiet Mode). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -292,7 +292,7 @@ class SceneGraphEngine(private val service: AutomationService) {
              val currNode = getNodeById(currentId)
              if (currNode != null) {
                  val sceneName = getNodeName(currentId)
-                 if (perceptionSystem.isStateActive(screen, currNode, variables, sceneName)) {
+                 if (perceptionSystem.isStateActive(screen, currNode, variables, sceneName, verbose = false)) {
                      // Stay
                      return currentId
                  }

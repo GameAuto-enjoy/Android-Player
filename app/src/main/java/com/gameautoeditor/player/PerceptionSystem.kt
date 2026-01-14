@@ -15,7 +15,7 @@ class PerceptionSystem(private val service: AutomationService) {
     /**
      * 感知 (Eyes): 檢查當前畫面是否符合某個 State (Scene Node) 的特徵
      */
-    fun isStateActive(screen: Bitmap, stateNode: JSONObject, variables: MutableMap<String, Int>, sceneName: String = "Unknown"): Boolean {
+    fun isStateActive(screen: Bitmap, stateNode: JSONObject, variables: MutableMap<String, Int>, sceneName: String = "Unknown", verbose: Boolean = true): Boolean {
         val data = stateNode.optJSONObject("data")
         val anchors = data?.optJSONArray("anchors")
         if (anchors == null || anchors.length() == 0) return false
@@ -24,12 +24,10 @@ class PerceptionSystem(private val service: AutomationService) {
         val totalAnchors = anchors.length()
 
         // Multi-Feature Logic (v1.7.14)
-        // Default (0 or missing): Require ALL matches
         var minMatches = data.optInt("minMatches", totalAnchors)
         if (minMatches <= 0) minMatches = totalAnchors
 
         // Calculate Expected Scale
-        // Scale = Device.Width / Node.Resolution.Width
         val nodeRes = stateNode.optJSONObject("resolution")
         var expectedScale: Double? = null
         if (nodeRes != null) {
@@ -41,22 +39,18 @@ class PerceptionSystem(private val service: AutomationService) {
 
         for (i in 0 until totalAnchors) {
             val anchor = anchors.getJSONObject(i)
-            // Use specialized check that can update variables
-            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale, nodeRes)) {
+            // Pass verbose flag
+            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale, nodeRes, verbose)) {
                 matchCount++
             }
         }
 
-        // Return true if threshold met
         return matchCount >= minMatches
     }
+    
+    // ... clearCache ...
 
-    fun clearCache() {
-        templateCache.clear()
-        // ImageMatcher has its own logic, but we might want to clear local cache
-    }
-
-    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?, nodeRes: JSONObject?): Boolean {
+    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean): Boolean {
         val matchType = anchor.optString("matchType", "image")
         val variableName = anchor.optString("variableName")
         
@@ -64,7 +58,7 @@ class PerceptionSystem(private val service: AutomationService) {
             "color" -> Pair(checkColor(screen, anchor), null)
             "text" -> checkText(screen, anchor)
             "ai" -> checkAi(screen, anchor)
-            else -> Pair(checkImage(screen, anchor, sceneName, scale, nodeRes), null)
+            else -> Pair(checkImage(screen, anchor, sceneName, scale, nodeRes, verbose), null)
         }
 
         // If defined, EXTRACT value into variable
@@ -88,7 +82,7 @@ class PerceptionSystem(private val service: AutomationService) {
 
     // --- Specific Perception Methods ---
 
-    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?, nodeRes: JSONObject?): Boolean {
+    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean): Boolean {
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) return false
 
@@ -112,7 +106,7 @@ class PerceptionSystem(private val service: AutomationService) {
         
         // High Score Pardon (User Request: > 0.9 means success regardless of position)
         if (result.score >= 0.9) {
-             Log.i(TAG, "[場景: $sceneName] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
+             if (verbose) Log.i(TAG, "[場景: $sceneName] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
              return true
         }
         
@@ -172,7 +166,7 @@ class PerceptionSystem(private val service: AutomationService) {
                          Log.w(TAG, "[場景: $sceneName] ❌ (Smart)位置偏差: 預期(${targetDevX.toInt()}, ${targetDevY.toInt()}) 實際(${result.x.toInt()}, ${result.y.toInt()})")
                          return false
                      } else {
-                         Log.d(TAG, "[場景: $sceneName] ✅ (Smart)位置符合")
+                         if (verbose) Log.d(TAG, "[場景: $sceneName] ✅ (Smart)位置符合")
                          return true
                      }
                 }
@@ -191,10 +185,10 @@ class PerceptionSystem(private val service: AutomationService) {
                  Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: 預期(%):(${ (targetXPercent*100).toInt() }, ${ (targetYPercent*100).toInt() }) 實際:(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() }) 容許:${ (toleranceParams*100).toInt() }%")
                  return false
             } else {
-                 Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: 實際(%):(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() })")
+                 if (verbose) Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: 實際(%):(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() })")
             }
         } else {
-             Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查)")
+             if (verbose) Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查)")
         }
         
         return true
