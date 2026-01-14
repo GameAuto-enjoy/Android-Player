@@ -43,6 +43,15 @@ class PerceptionSystem(private val service: AutomationService) {
             if (checkAnchor(screen, anchor, variables, sceneName, expectedScale, nodeRes, verbose, i + 1)) {
                 matchCount++
             }
+            
+            // Short-Circuit Optimization (Quick Fail)
+            // If the remaining anchors are not enough to reach 'minMatches', abort early.
+            // This prevents expensive checks (AI) if a simple check (Image) has already failed.
+            val remainingAnchors = totalAnchors - (i + 1)
+            if (matchCount + remainingAnchors < minMatches) {
+                if (verbose) Log.v(TAG, "[感知] ⚡ 快速失敗 (Quick Fail): 已匹配 $matchCount, 剩餘 $remainingAnchors, 目標 $minMatches. 中止檢查.")
+                return false
+            }
         }
 
         return matchCount >= minMatches
