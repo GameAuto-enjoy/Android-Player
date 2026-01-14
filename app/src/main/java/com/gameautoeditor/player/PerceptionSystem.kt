@@ -412,7 +412,7 @@ class PerceptionSystem(private val service: AutomationService) {
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val outputStream = java.io.ByteArrayOutputStream()
         // Quality 70 is good trade-off
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
         return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
     }
 }
