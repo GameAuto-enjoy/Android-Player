@@ -24,8 +24,24 @@ class SceneGraphEngine(private val service: AutomationService) {
     private var previousSceneId: String? = null
     private var lostFrameCount = 0
 
+    @Synchronized
     fun start(jsonString: String) {
-        if (isRunning) return
+        if (isRunning) {
+            Log.w(TAG, "⚠️ 引擎已在運行中，忽略啟動請求")
+            return
+        }
+        
+        // Ensure previous thread is truly dead
+        if (workerThread != null && workerThread!!.isAlive) {
+            Log.w(TAG, "⚠️ 舊的 Worker Thread 尚未結束，強制停止...")
+            isRunning = false
+            try {
+                workerThread?.join(1000)
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            }
+        }
+
         isRunning = true
         try {
             graphData = JSONObject(jsonString)
@@ -43,7 +59,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.15 (Global Reset). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.16 (Single Thread Fix). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -53,8 +69,15 @@ class SceneGraphEngine(private val service: AutomationService) {
         }
     }
 
+    @Synchronized
     fun stop() {
+        if (!isRunning) return
         isRunning = false
+        
+        // Do not block UI thread too long, but try to join for cleanliness if called from background
+        // But usually stop() is called from UI or Service. 
+        // Just setting isRunning = false should break the loop.
+        
         perceptionSystem.clearCache()
         executionHistory.clear()
         Log.i(TAG, "⏹️ 已停止")
