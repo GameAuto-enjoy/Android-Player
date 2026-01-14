@@ -24,6 +24,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     private var previousSceneId: String? = null
     private var lostFrameCount = 0
     private var transitionStuckCount = 0
+    private var lastTransitionAction: TransitionAction? = null
 
     @Synchronized
     fun start(jsonString: String) {
@@ -60,7 +61,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.20 (Quick Fail). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.21 (Smart Retry). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -141,6 +142,17 @@ class SceneGraphEngine(private val service: AutomationService) {
                                 transitionStuckCount++
                                 if (transitionStuckCount <= 20) { // Max 10 seconds (20 * 500ms)
                                     Log.i(TAG, "[FSM] ⏳ 轉場中... 目標未現，且畫面仍停在 [$prevName]. 延長等待... ($transitionStuckCount/20)")
+                                    
+                                    // Retry Logic (User Request)
+                                    if (transitionStuckCount % 6 == 0 && lastTransitionAction != null) {
+                                         val label = lastTransitionAction?.region?.optString("label") ?: "Unknown"
+                                         Log.w(TAG, "[FSM] 🔄 轉場停滯 (檢測到舊場景). 重試動作: $label")
+                                         val actionConfig = lastTransitionAction?.region?.optJSONObject("action")
+                                         if (actionConfig != null) {
+                                             actionSystem.performAction(actionConfig, lastTransitionAction!!.region, prevNode.optJSONObject("resolution"))
+                                         }
+                                    }
+
                                     lastTransitionTime = System.currentTimeMillis() // Keep extending
                                     screen.recycle()
                                     smartSleep(500)
@@ -194,6 +206,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     val action = decideNextAction(screen, activeId!!)
                     
                     if (action != null) {
+                        lastTransitionAction = action
                         Log.i(TAG, "[場景: $activeSceneName] ⚡ 執行動作: '${action.region.optString("label")}' (目標: ${getNodeName(action.targetSceneId)})")
                         
                         // 3. Action (Hand) - Handle CHECK_EXIT (No Click)

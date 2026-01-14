@@ -50,7 +50,7 @@ class ActionSystem(private val service: AutomationService) {
             "CLICK" -> {
                 val repeat = params?.optInt("repeat", 1) ?: 1
                 val repeatDelay = params?.optLong("repeatDelay", 100L) ?: 100L
-                val baseDuration = randomDuration(50, 150) // Random tap duration
+                val baseDuration = randomDuration(100, 200) // 增加點擊時長以確保遊戲在 LAG 時能接收到
 
                 for (i in 0 until repeat) {
                     val clickPath = Path()
@@ -63,8 +63,17 @@ class ActionSystem(private val service: AutomationService) {
                     clickBuilder.addStroke(stroke)
                     
                     try {
-                        service.dispatchGesture(clickBuilder.build(), null, null)
-                        Log.i(TAG, "[動作: $label] 👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()})")
+                        service.dispatchGesture(clickBuilder.build(), object : AccessibilityService.GestureResultCallback() {
+                            override fun onCompleted(gestureDescription: GestureDescription?) {
+                                super.onCompleted(gestureDescription)
+                                // Log.v(TAG, "⚡ 手勢系統確認接收") // Too verbose maybe?
+                            }
+                            override fun onCancelled(gestureDescription: GestureDescription?) {
+                                super.onCancelled(gestureDescription)
+                                Log.w(TAG, "⚠️ 手勢被系統取消 (可能被其他操作中斷)")
+                            }
+                        }, null)
+                        Log.i(TAG, "[動作: $label] 👆 點擊 (${i+1}/$repeat) 於 (${targetPoint.x.toInt()}, ${targetPoint.y.toInt()}) 用時:${baseDuration}ms")
                     } catch (e: Exception) {
                         Log.e(TAG, "點擊失敗", e)
                     }
