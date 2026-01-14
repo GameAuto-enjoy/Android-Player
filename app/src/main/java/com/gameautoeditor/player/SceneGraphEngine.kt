@@ -22,6 +22,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     private val executionHistory = mutableMapOf<String, ExecutionData>()
     private val variables = mutableMapOf<String, Int>()
     private var previousSceneId: String? = null
+    private var lostFrameCount = 0
 
     fun start(jsonString: String) {
         if (isRunning) return
@@ -42,7 +43,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.14 (Multi-Feature Support). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.15 (Global Reset). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -139,7 +140,19 @@ class SceneGraphEngine(private val service: AutomationService) {
                      }
                 }
 
+                // Global Exit Recovery (v1.7.15)
+                // When we leave a Global State (Interrupt) and find nothing (activeId == null),
+                // we FORCE reset to Root. This allows the FSM to "find from beginning" (re-scan Root and its neighbors).
+                if (activeId == null && currentSceneId != null) {
+                    val currNode = getNodeById(currentSceneId!!)
+                    if (currNode?.optJSONObject("data")?.optBoolean("isGlobal") == true) {
+                        Log.i(TAG, "[FSM] ⚡ 全域事件結束 (Global Exit). 重置回初始場景 (Root) 以重新確認位置...")
+                        activeId = findRootNodeId()
+                    }
+                }
+
                 if (activeId != null) {
+                    lostFrameCount = 0 // Reset lost counter
                     val activeSceneName = getNodeName(activeId)
                     if (activeId != currentSceneId) {
                          Log.i(TAG, "[場景] 📍 切換: ${getNodeName(currentSceneId)} -> $activeSceneName")
@@ -185,7 +198,14 @@ class SceneGraphEngine(private val service: AutomationService) {
                          Thread.sleep(500)
                     }
                 } else {
-                    Log.i(TAG, "[場景: 未知] ❓ 無匹配特徵，掃描中...")
+                    lostFrameCount++
+                    Log.i(TAG, "[場景: 未知] ❓ 無匹配特徵，掃描中... ($lostFrameCount/20)")
+                    
+                    if (lostFrameCount >= 20) {
+                         Log.w(TAG, "⚠️ 迷航過久 (Lost > 10s). 強制重置回初始場景 (Root) 以重新尋找路徑.")
+                         currentSceneId = findRootNodeId()
+                         lostFrameCount = 0
+                    }
                     Thread.sleep(500)
                 }
                 
