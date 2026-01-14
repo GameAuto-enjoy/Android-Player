@@ -84,7 +84,7 @@ class AutomationService : AccessibilityService() {
             layoutParams.y = 100
             
             // Fix: Use ContextThemeWrapper to provide AppCompat Theme for AppCompat Widgets
-            val themeContext = android.view.ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Light)
+            val themeContext = androidx.appcompat.view.ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Light)
             floatingView = android.view.LayoutInflater.from(themeContext).inflate(R.layout.layout_floating_widget, null)
             
             // UI References
@@ -214,7 +214,7 @@ class AutomationService : AccessibilityService() {
             Log.i(TAG, "懸浮窗已添加")
             
         } catch (e: Exception) {
-            Log.e(TAG, "建立懸浮窗失敗: ${e.message}")
+            Log.e(TAG, "建立懸浮窗失敗: ${e.message}", e)
         }
     }
     
