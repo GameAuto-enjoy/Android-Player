@@ -39,8 +39,8 @@ class PerceptionSystem(private val service: AutomationService) {
 
         for (i in 0 until totalAnchors) {
             val anchor = anchors.getJSONObject(i)
-            // Pass verbose flag
-            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale, nodeRes, verbose)) {
+            // Pass verbose flag and index
+            if (checkAnchor(screen, anchor, variables, sceneName, expectedScale, nodeRes, verbose, i + 1)) {
                 matchCount++
             }
         }
@@ -53,7 +53,7 @@ class PerceptionSystem(private val service: AutomationService) {
         // ImageMatcher has its own logic, but we might want to clear local cache
     }
 
-    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean): Boolean {
+    private fun checkAnchor(screen: Bitmap, anchor: JSONObject, variables: MutableMap<String, Int>, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean, index: Int): Boolean {
         val matchType = anchor.optString("matchType", "image")
         val variableName = anchor.optString("variableName")
         
@@ -61,7 +61,7 @@ class PerceptionSystem(private val service: AutomationService) {
             "color" -> Pair(checkColor(screen, anchor), null)
             "text" -> checkText(screen, anchor)
             "ai" -> checkAi(screen, anchor)
-            else -> Pair(checkImage(screen, anchor, sceneName, scale, nodeRes, verbose), null)
+            else -> Pair(checkImage(screen, anchor, sceneName, scale, nodeRes, verbose, index), null)
         }
 
         // If defined, EXTRACT value into variable
@@ -85,7 +85,7 @@ class PerceptionSystem(private val service: AutomationService) {
 
     // --- Specific Perception Methods ---
 
-    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean): Boolean {
+    private fun checkImage(screen: Bitmap, anchor: JSONObject, sceneName: String, scale: Double?, nodeRes: JSONObject?, verbose: Boolean, index: Int): Boolean {
         val base64Template = anchor.optString("template")
         if (base64Template.isEmpty()) return false
 
@@ -109,7 +109,7 @@ class PerceptionSystem(private val service: AutomationService) {
         
         // High Score Pardon (User Request: > 0.9 means success regardless of position)
         if (result.score >= 0.9) {
-             if (verbose) Log.i(TAG, "[場景: $sceneName] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
+             if (verbose) Log.i(TAG, "[場景: $sceneName][特徵#$index] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
              return true
         }
         
@@ -169,7 +169,7 @@ class PerceptionSystem(private val service: AutomationService) {
                          Log.w(TAG, "[場景: $sceneName] ❌ (Smart)位置偏差: 預期(${targetDevX.toInt()}, ${targetDevY.toInt()}) 實際(${result.x.toInt()}, ${result.y.toInt()})")
                          return false
                      } else {
-                         if (verbose) Log.d(TAG, "[場景: $sceneName] ✅ (Smart)位置符合")
+                         if (verbose) Log.d(TAG, "[場景: $sceneName][特徵#$index] ✅ (Smart)位置符合")
                          return true
                      }
                 }
@@ -188,10 +188,10 @@ class PerceptionSystem(private val service: AutomationService) {
                  Log.w(TAG, "[場景: $sceneName] ❌ 圖片位置偏差過大: 預期(%):(${ (targetXPercent*100).toInt() }, ${ (targetYPercent*100).toInt() }) 實際:(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() }) 容許:${ (toleranceParams*100).toInt() }%")
                  return false
             } else {
-                 if (verbose) Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配: 實際(%):(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() })")
+                 if (verbose) Log.d(TAG, "[場景: $sceneName][特徵#$index] ✅ 圖片匹配: 實際(%):(${ (foundXPercent*100).toInt() }, ${ (foundYPercent*100).toInt() })")
             }
         } else {
-             if (verbose) Log.d(TAG, "[場景: $sceneName] ✅ 圖片匹配 (無座標檢查)")
+             if (verbose) Log.d(TAG, "[場景: $sceneName][特徵#$index] ✅ 圖片匹配 (無座標檢查)")
         }
         
         return true

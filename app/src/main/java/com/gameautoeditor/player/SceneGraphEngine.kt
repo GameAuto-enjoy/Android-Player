@@ -23,6 +23,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     private val variables = mutableMapOf<String, Int>()
     private var previousSceneId: String? = null
     private var lostFrameCount = 0
+    private var transitionStuckCount = 0
 
     @Synchronized
     fun start(jsonString: String) {
@@ -135,12 +136,19 @@ class SceneGraphEngine(private val service: AutomationService) {
                         val prevNode = getNodeById(previousSceneId!!)
                         if (prevNode != null) {
                             val prevName = getNodeName(previousSceneId)
-                            if (perceptionSystem.isStateActive(screen, prevNode, variables, prevName)) {
-                                Log.i(TAG, "[FSM] ⏳ 轉場中... 目標未現，且畫面仍停在 [$prevName]. 延長等待...")
-                                lastTransitionTime = System.currentTimeMillis() // Keep extending
-                                screen.recycle()
-                                Thread.sleep(500)
-                                continue // Skip this frame
+                            // Quiet check for previous scene
+                            if (perceptionSystem.isStateActive(screen, prevNode, variables, prevName, verbose = false)) {
+                                transitionStuckCount++
+                                if (transitionStuckCount <= 20) { // Max 10 seconds (20 * 500ms)
+                                    Log.i(TAG, "[FSM] ⏳ 轉場中... 目標未現，且畫面仍停在 [$prevName]. 延長等待... ($transitionStuckCount/20)")
+                                    lastTransitionTime = System.currentTimeMillis() // Keep extending
+                                    screen.recycle()
+                                    smartSleep(500)
+                                    continue // Skip this frame
+                                } else {
+                                    Log.w(TAG, "[FSM] ⚠️ 轉場逾時 (Stuck > 10s). 放棄等待，強制執行下一步判定.")
+                                    lastTransitionTime = 0 // Stop waiting
+                                }
                             }
                         }
                     }
@@ -215,6 +223,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                              previousSceneId = currentSceneId
                              currentSceneId = action.targetSceneId
                              lastTransitionTime = System.currentTimeMillis()
+                             transitionStuckCount = 0 // Reset stuck counter for new transition
                         }
                     } else {
                          // Idle in state (Waiting for cooldowns or trigger)
