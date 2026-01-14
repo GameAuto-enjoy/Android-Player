@@ -83,7 +83,9 @@ class AutomationService : AccessibilityService() {
             layoutParams.x = 0
             layoutParams.y = 100
             
-            floatingView = android.view.LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null)
+            // Fix: Use ContextThemeWrapper to provide AppCompat Theme for AppCompat Widgets
+            val themeContext = android.view.ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Light)
+            floatingView = android.view.LayoutInflater.from(themeContext).inflate(R.layout.layout_floating_widget, null)
             
             // UI References
             val collapsedContainer = floatingView?.findViewById<android.view.View>(R.id.collapsed_container)
