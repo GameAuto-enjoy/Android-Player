@@ -59,7 +59,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.16 (Single Thread Fix). 變數: $variables")
+            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.17 (Smart Sleep). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -194,7 +194,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                             val waitBefore = action.region.optLong("wait_before", 0L)
                             if (waitBefore > 0) {
                                 Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行前等待: ${waitBefore}ms")
-                                Thread.sleep(waitBefore)
+                                smartSleep(waitBefore)
                             }
 
                             actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region, getNodeById(activeId)?.optJSONObject("resolution"))
@@ -207,7 +207,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                         
                         val waitAfter = action.region.optLong("wait_after", 1000L)
                         Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行後冷卻: ${waitAfter}ms")
-                        Thread.sleep(waitAfter)
+                        smartSleep(waitAfter)
 
                         // Predictive Transition: Immediately switch state to Target
                         if (action.targetSceneId != null && action.targetSceneId != currentSceneId) {
@@ -218,7 +218,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                         }
                     } else {
                          // Idle in state (Waiting for cooldowns or trigger)
-                         Thread.sleep(500)
+                         smartSleep(500)
                     }
                 } else {
                     lostFrameCount++
@@ -229,7 +229,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                          currentSceneId = findRootNodeId()
                          lostFrameCount = 0
                     }
-                    Thread.sleep(500)
+                    smartSleep(500)
                 }
                 
                 screen.recycle()
@@ -481,6 +481,28 @@ class SceneGraphEngine(private val service: AutomationService) {
         }
     }
 
+    private fun smartSleep(ms: Long) {
+        if (ms <= 0) return
+        val startTime = System.currentTimeMillis()
+        var elapsed = 0L
+        
+        // Chunked sleep to allow fast stop()
+        while (isRunning && elapsed < ms) {
+            val remaining = ms - elapsed
+            val chunk = if (remaining > 200) 200 else remaining
+            try {
+                Thread.sleep(chunk)
+            } catch (e: InterruptedException) {
+                // Thread interrupted
+                break
+            }
+            elapsed = System.currentTimeMillis() - startTime
+        }
+        
+        if (ms >= 5000 && isRunning) {
+             Log.d(TAG, "⏰ 休眠結束 (Planned: ${ms}ms, Actual: ${elapsed}ms)")
+        }
+    }
     private fun updateHistory(region: JSONObject) {
         val id = region.optString("id")
         if (id.isNotEmpty()) {
