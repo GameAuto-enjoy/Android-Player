@@ -73,7 +73,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            remoteLog("INFO", "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.27 (Auto-Debug). 變數: $variables")
+            remoteLog("INFO", "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.28 (Enhanced-Debug). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
