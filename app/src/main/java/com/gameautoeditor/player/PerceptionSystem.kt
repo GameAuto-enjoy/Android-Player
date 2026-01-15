@@ -6,11 +6,23 @@ import org.json.JSONObject
 import android.graphics.BitmapFactory
 import android.util.Base64
 
-class PerceptionSystem(private val service: AutomationService) {
+class PerceptionSystem(private val service: AutomationService, private val logger: ((String, String) -> Unit)? = null) {
     private val TAG = "GameAuto"
     
     // Cache for Decoded Template Bitmaps (Config Layer asset)
     private val templateCache = mutableMapOf<String, Bitmap>()
+
+    private fun remoteLog(level: String, message: String) {
+        // 1. Local Logcat
+        when (level) {
+            "INFO" -> Log.i(TAG, message)
+            "DEBUG" -> Log.d(TAG, message)
+            "WARN" -> Log.w(TAG, message)
+            "ERROR" -> Log.e(TAG, message)
+        }
+        // 2. Remote
+        logger?.invoke(level, message)
+    }
 
     /**
      * 感知 (Eyes): 檢查當前畫面是否符合某個 State (Scene Node) 的特徵
@@ -49,7 +61,7 @@ class PerceptionSystem(private val service: AutomationService) {
             // This prevents expensive checks (AI) if a simple check (Image) has already failed.
             val remainingAnchors = totalAnchors - (i + 1)
             if (matchCount + remainingAnchors < minMatches) {
-                if (verbose) Log.v(TAG, "[感知] ⚡ 快速失敗 (Quick Fail): 已匹配 $matchCount, 剩餘 $remainingAnchors, 目標 $minMatches. 中止檢查.")
+                if (verbose) remoteLog("DEBUG", "[感知] ⚡ 快速失敗 (Quick Fail): 已匹配 $matchCount, 剩餘 $remainingAnchors, 目標 $minMatches. 中止檢查.")
                 return false
             }
         }
@@ -82,10 +94,10 @@ class PerceptionSystem(private val service: AutomationService) {
                 if (cleanVal.isNotEmpty()) {
                     val intVal = cleanVal.toInt()
                     variables[variableName] = intVal
-                    Log.i(TAG, "📥 變數提取成功 [$variableName] = $intVal (原始值: ${result.second})")
+                    remoteLog("INFO", "📥 變數提取成功 [$variableName] = $intVal (原始值: ${result.second})")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "無法解析提取的數值 '${result.second}' 為整數")
+                remoteLog("WARN", "無法解析提取的數值 '${result.second}' 為整數")
             }
         }
 
@@ -116,9 +128,8 @@ class PerceptionSystem(private val service: AutomationService) {
             return false
         }
         
-        // High Score Pardon (User Request: > 0.9 means success regardless of position)
         if (result.score >= 0.9) {
-             if (verbose) Log.i(TAG, "[場景: $sceneName][特徵#$index] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
+             if (verbose) remoteLog("INFO", "[場景: $sceneName][特徵#$index] ⚡ 高分特赦 (Score: ${String.format("%.4f", result.score)} >= 0.9). 忽略位置檢查.")
              return true
         }
         
@@ -308,9 +319,9 @@ class PerceptionSystem(private val service: AutomationService) {
             latch.await(3, java.util.concurrent.TimeUnit.SECONDS)
             
             if (isMatch) {
-                 Log.i(TAG, "✅ OCR 匹配成功: '${recognizedText}' 包含 '$targetText'")
+                 remoteLog("INFO", "✅ OCR 匹配成功: '${recognizedText}' 包含 '$targetText'")
             } else {
-                 Log.d(TAG, "❌ OCR 匹配失敗: 識別出 '${recognizedText}', 預期包含 '$targetText'")
+                 remoteLog("DEBUG", "❌ OCR 匹配失敗: 識別出 '${recognizedText}', 預期包含 '$targetText'")
             }
 
         } catch (e: Exception) {
@@ -389,7 +400,7 @@ class PerceptionSystem(private val service: AutomationService) {
         
         // Log explanation
         if (reason != null && reason.isNotEmpty()) {
-             Log.i(TAG, "🧠 AI 推理: $reason")
+             remoteLog("INFO", "🧠 AI 推理: $reason")
         }
 
         return Pair(isMatch, reason)

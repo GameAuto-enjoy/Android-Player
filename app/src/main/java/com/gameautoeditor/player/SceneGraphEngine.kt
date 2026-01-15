@@ -20,7 +20,9 @@ class SceneGraphEngine(private val service: AutomationService) {
     private var deviceId: String? = null
 
     // Systems
-    private val perceptionSystem = PerceptionSystem(service)
+    private val perceptionSystem = PerceptionSystem(service) { level, msg ->
+        remoteLog(level, msg)
+    }
     private val actionSystem = ActionSystem(service)
 
     // State
@@ -220,6 +222,17 @@ class SceneGraphEngine(private val service: AutomationService) {
                          remoteLog("INFO", "[場景] 📍 切換: ${getNodeName(currentSceneId)} -> $activeSceneName")
                          currentSceneId = activeId
                          reportState(activeId!!)
+                         
+                         // Check for Parent Group (Loop Region)
+                         val activeNode = getNodeById(activeId!!)
+                         val parentId = activeNode?.optString("parentNode")
+                         if (!parentId.isNullOrEmpty()) {
+                             val parentNode = getNodeById(parentId)
+                             val parentLabel = parentNode?.optJSONObject("data")?.optString("label") ?: parentId
+                             if (parentNode?.optString("type") == "group") {
+                                remoteLog("INFO", "[Flow] 📂 位於群組/迴圈區域: $parentLabel")
+                             }
+                         }
                     }
 
                     // 2. Decision (Brain)
@@ -458,6 +471,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                 val v = condition.optString("variable")
                 if (v.isNotEmpty()) {
                      val valStored = variables[v] ?: 0
+                     remoteLog("DEBUG", "[邏輯] 檢查變數: $v = $valStored")
                      if (valStored <= 0) isRunnable = false
                 }
             }
