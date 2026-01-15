@@ -73,7 +73,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            remoteLog("INFO", "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.28 (Enhanced-Debug). 變數: $variables")
+            remoteLog("INFO", "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.29 (Log-Target). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -518,7 +518,8 @@ class SceneGraphEngine(private val service: AutomationService) {
                     
                     if (!anyMatch) {
                         isRunnable = false
-                        remoteLog("DEBUG", "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符 - 檢查了 ${perceptions.size} 個條件)")
+                        val targetStr = if (r.optString("target").isEmpty()) "維持" else getNodeName(r.optString("target"))
+                        remoteLog("DEBUG", "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' -> 目標: $targetStr (感知不符 - 檢查了 ${perceptions.size} 個條件)")
                     } else {
                         remoteLog("DEBUG", "[場景: $sceneName] 👁️ 觸發條件符合: '${r.optString("label")}'")
                     }
