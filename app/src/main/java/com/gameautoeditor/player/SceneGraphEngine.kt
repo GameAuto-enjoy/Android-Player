@@ -13,6 +13,12 @@ class SceneGraphEngine(private val service: AutomationService) {
     private var isRunning = false
     private var workerThread: Thread? = null
 
+    // Remote Logging
+    private val logQueue = java.util.concurrent.ConcurrentLinkedQueue<JSONObject>()
+    private var lastLogFlushTime = 0L
+    private val networkExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var deviceId: String? = null
+
     // Systems
     private val perceptionSystem = PerceptionSystem(service)
     private val actionSystem = ActionSystem(service)
@@ -61,7 +67,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                     variables[key] = settingsVars.optInt(key, 0)
                 }
             }
-            Log.i(TAG, "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.26 (Vector Fix 2). 變數: $variables")
+            remoteLog("INFO", "🤖 SceneGraphEngine (FSM) 已啟動. 版本: 1.7.26 (Vector Fix 2). 變數: $variables")
 
             workerThread = Thread { runLoop() }
             workerThread?.start()
@@ -82,7 +88,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         perceptionSystem.clearCache()
         executionHistory.clear()
-        Log.i(TAG, "⏹️ 已停止")
+        remoteLog("INFO", "⏹️ 已停止")
     }
 
     private fun runLoop() {
@@ -90,11 +96,14 @@ class SceneGraphEngine(private val service: AutomationService) {
         var currentSceneId = findRootNodeId()
         
         if (currentSceneId == null) {
-            Log.e(TAG, "❌ 腳本中找不到起始節點 (Root Node)")
+            remoteLog("ERROR", "❌ 腳本中找不到起始節點 (Root Node)")
             service.showToast("腳本錯誤：找不到起始節點")
             isRunning = false
             return
         }
+        
+        // Initial State Report
+        reportState(currentSceneId!!)
 
         while (isRunning) {
             try {
@@ -102,6 +111,12 @@ class SceneGraphEngine(private val service: AutomationService) {
                 if (!checkAppFocus()) {
                     Thread.sleep(1000)
                     continue
+                }
+                
+                // Flush Logs periodically (every 1s)
+                if (System.currentTimeMillis() - lastLogFlushTime > 1000) {
+                    flushLogs()
+                    lastLogFlushTime = System.currentTimeMillis()
                 }
 
                 // 1. Perception (Eye)
@@ -125,7 +140,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                         if (hasAnchors) {
                             val targetName = getNodeName(currentSceneId)
                             if (perceptionSystem.isStateActive(screen, targetNode, variables, targetName)) {
-                                Log.d(TAG, "[FSM] 🚀 目標場景 [$targetName] 已確認出現 (Overlay mode). 停止等待.")
+                                remoteLog("DEBUG", "[FSM] 🚀 目標場景 [$targetName] 已確認出現 (Overlay mode). 停止等待.")
                                 lastTransitionTime = 0 // Clear timer, transition complete
                                 targetResolved = true
                             }
@@ -141,12 +156,12 @@ class SceneGraphEngine(private val service: AutomationService) {
                             if (perceptionSystem.isStateActive(screen, prevNode, variables, prevName, verbose = false)) {
                                 transitionStuckCount++
                                 if (transitionStuckCount <= 20) { // Max 10 seconds (20 * 500ms)
-                                    Log.i(TAG, "[FSM] ⏳ 轉場中... 目標未現，且畫面仍停在 [$prevName]. 延長等待... ($transitionStuckCount/20)")
+                                    remoteLog("INFO", "[FSM] ⏳ 轉場中... 目標未現，且畫面仍停在 [$prevName]. 延長等待... ($transitionStuckCount/20)")
                                     
                                     // Retry Logic (User Request)
                                     if (transitionStuckCount % 6 == 0 && lastTransitionAction != null) {
                                          val label = lastTransitionAction?.region?.optString("label") ?: "Unknown"
-                                         Log.w(TAG, "[FSM] 🔄 轉場停滯 (檢測到舊場景). 重試動作: $label")
+                                         remoteLog("WARN", "[FSM] 🔄 轉場停滯 (檢測到舊場景). 重試動作: $label")
                                          val actionConfig = lastTransitionAction?.region?.optJSONObject("action")
                                          if (actionConfig != null) {
                                              actionSystem.performAction(actionConfig, lastTransitionAction!!.region, prevNode.optJSONObject("resolution"))
@@ -158,7 +173,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                                     smartSleep(500)
                                     continue // Skip this frame
                                 } else {
-                                    Log.w(TAG, "[FSM] ⚠️ 轉場逾時 (Stuck > 10s). 放棄等待，強制執行下一步判定.")
+                                    remoteLog("WARN", "[FSM] ⚠️ 轉場逾時 (Stuck > 10s). 放棄等待，強制執行下一步判定.")
                                     lastTransitionTime = 0 // Stop waiting
                                 }
                             }
@@ -179,7 +194,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                      // If current state has NO anchors defined, we assume strict adherence (Blind State)
                      if (anchors == null || anchors.length() == 0) {
                          activeId = currentSceneId
-                         Log.v(TAG, "[感知] ⚠️ 盲從模式 (Blind Trust): 強制假設在 $activeId (無 anchors)")
+                         remoteLog("DEBUG", "[感知] ⚠️ 盲從模式 (Blind Trust): 強制假設在 $activeId (無 anchors)")
                      }
                 }
 
@@ -189,7 +204,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                 if (activeId == null && currentSceneId != null) {
                     val currNode = getNodeById(currentSceneId!!)
                     if (currNode?.optJSONObject("data")?.optBoolean("isGlobal") == true) {
-                        Log.i(TAG, "[FSM] ⚡ 全域事件結束 (Global Exit). 重置回初始場景 (Root) 以重新確認位置...")
+                        remoteLog("INFO", "[FSM] ⚡ 全域事件結束 (Global Exit). 重置回初始場景 (Root) 以重新確認位置...")
                         activeId = findRootNodeId()
                     }
                 }
@@ -198,8 +213,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                     lostFrameCount = 0 // Reset lost counter
                     val activeSceneName = getNodeName(activeId)
                     if (activeId != currentSceneId) {
-                         Log.i(TAG, "[場景] 📍 切換: ${getNodeName(currentSceneId)} -> $activeSceneName")
+                         remoteLog("INFO", "[場景] 📍 切換: ${getNodeName(currentSceneId)} -> $activeSceneName")
                          currentSceneId = activeId
+                         reportState(activeId!!)
                     }
 
                     // 2. Decision (Brain)
@@ -207,34 +223,35 @@ class SceneGraphEngine(private val service: AutomationService) {
                     
                     if (action != null) {
                         lastTransitionAction = action
-                        Log.i(TAG, "[場景: $activeSceneName] ⚡ 執行動作: '${action.region.optString("label")}' (目標: ${getNodeName(action.targetSceneId)})")
+                        remoteLog("INFO", "[場景: $activeSceneName] ⚡ 執行動作: '${action.region.optString("label")}' (目標: ${getNodeName(action.targetSceneId)})")
                         
                         // 3. Action (Hand) - Handle CHECK_EXIT (No Click)
                         val actionType = action.region.optJSONObject("action")?.optString("type")
                         if (actionType != "CHECK_EXIT") {
                             val waitBefore = action.region.optLong("wait_before", 0L)
                             if (waitBefore > 0) {
-                                Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行前等待: ${waitBefore}ms")
+                                remoteLog("INFO", "[場景: $activeSceneName] ⏳ 執行前等待: ${waitBefore}ms")
                                 smartSleep(waitBefore)
                             }
 
                             actionSystem.performAction(action.region.optJSONObject("action") ?: JSONObject(), action.region, getNodeById(activeId)?.optJSONObject("resolution"))
                         } else {
-                            Log.i(TAG, "[場景: $activeSceneName] ⏭️ 純跳轉 (無點擊)")
+                            remoteLog("INFO", "[場景: $activeSceneName] ⏭️ 純跳轉 (無點擊)")
                         }
                         
                         applySideEffects(action.region)
                         updateHistory(action.region)
                         
                         val waitAfter = action.region.optLong("wait_after", 1000L)
-                        Log.i(TAG, "[場景: $activeSceneName] ⏳ 執行後冷卻: ${waitAfter}ms")
+                        remoteLog("INFO", "[場景: $activeSceneName] ⏳ 執行後冷卻: ${waitAfter}ms")
                         smartSleep(waitAfter)
 
                         // Predictive Transition: Immediately switch state to Target
                         if (action.targetSceneId != null && action.targetSceneId != currentSceneId) {
-                             Log.i(TAG, "[FSM] 🔮 預測性切換: $activeSceneName -> ${getNodeName(action.targetSceneId)}")
+                             remoteLog("INFO", "[FSM] 🔮 預測性切換: $activeSceneName -> ${getNodeName(action.targetSceneId)}")
                              previousSceneId = currentSceneId
                              currentSceneId = action.targetSceneId
+                             reportState(currentSceneId!!)
                              lastTransitionTime = System.currentTimeMillis()
                              transitionStuckCount = 0 // Reset stuck counter for new transition
                         }
@@ -244,11 +261,12 @@ class SceneGraphEngine(private val service: AutomationService) {
                     }
                 } else {
                     lostFrameCount++
-                    Log.i(TAG, "[場景: 未知] ❓ 無匹配特徵，掃描中... ($lostFrameCount/20)")
+                    remoteLog("DEBUG", "[場景: 未知] ❓ 無匹配特徵，掃描中... ($lostFrameCount/20)")
                     
                     if (lostFrameCount >= 20) {
-                         Log.w(TAG, "⚠️ 迷航過久 (Lost > 10s). 強制重置回初始場景 (Root) 以重新尋找路徑.")
+                         remoteLog("WARN", "⚠️ 迷航過久 (Lost > 10s). 強制重置回初始場景 (Root) 以重新尋找路徑.")
                          currentSceneId = findRootNodeId()
+                         if (currentSceneId != null) reportState(currentSceneId!!)
                          lostFrameCount = 0
                     }
                     smartSleep(500)
@@ -322,7 +340,7 @@ class SceneGraphEngine(private val service: AutomationService) {
                  // GRACE PERIOD: If we just transitioned, hold this state blindly for 3 seconds
                  // This prevents falling back to the previous scene while the new one loads.
                  if (System.currentTimeMillis() - lastTransitionTime < 3000) {
-                     Log.d(TAG, "[場景] 🛡️ 轉換保護: 維持在 $sceneName (等待畫面載入...)")
+                     remoteLog("DEBUG", "[場景] 🛡️ 轉換保護: 維持在 $sceneName (等待畫面載入...)")
                      return currentId
                  }
              }
@@ -375,7 +393,7 @@ class SceneGraphEngine(private val service: AutomationService) {
             
             val sceneName = getNodeName(id)
             if (perceptionSystem.isStateActive(screen, node, variables, sceneName)) {
-                 Log.d(TAG, "[場景] 🔍 發現狀態: $sceneName")
+                 remoteLog("DEBUG", "[場景] 🔍 發現狀態: $sceneName")
                  return id
             }
         }
@@ -482,9 +500,9 @@ class SceneGraphEngine(private val service: AutomationService) {
                     
                     if (!anyMatch) {
                         isRunnable = false
-                        Log.d(TAG, "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符 - 檢查了 ${perceptions.size} 個條件)")
+                        remoteLog("DEBUG", "[場景: $sceneName] ❌ 跳過動作: '${r.optString("label")}' (感知不符 - 檢查了 ${perceptions.size} 個條件)")
                     } else {
-                        Log.v(TAG, "[場景: $sceneName] 👁️ 觸發條件符合: '${r.optString("label")}'")
+                        remoteLog("DEBUG", "[場景: $sceneName] 👁️ 觸發條件符合: '${r.optString("label")}'")
                     }
                 }
             }
@@ -578,5 +596,95 @@ class SceneGraphEngine(private val service: AutomationService) {
             fakeNode.put("resolution", resolution)
         }
         return fakeNode
+    }
+
+    private fun getDeviceId(): String {
+        if (deviceId == null) {
+            deviceId = android.provider.Settings.Secure.getString(service.contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "UNKNOWN_DEVICE"
+        }
+        return deviceId!!
+    }
+
+    private fun remoteLog(level: String, message: String, tr: Throwable? = null) {
+        // 1. Android Local Log
+        when(level) {
+            "INFO" -> Log.i(TAG, message)
+            "DEBUG" -> Log.d(TAG, message)
+            "WARN" -> Log.w(TAG, message)
+            "ERROR" -> Log.e(TAG, message, tr)
+        }
+        
+        // 2. Queue for Remote
+        val entry = JSONObject()
+        entry.put("timestamp", System.currentTimeMillis())
+        entry.put("level", level)
+        entry.put("message", if (tr != null) "$message\n${Log.getStackTraceString(tr)}" else message)
+        
+        logQueue.offer(entry)
+    }
+
+    private fun reportState(nodeId: String) {
+        val payload = JSONObject()
+        payload.put("nodeId", nodeId)
+        payload.put("timestamp", System.currentTimeMillis())
+        
+        val packet = JSONObject()
+        packet.put("deviceId", getDeviceId())
+        packet.put("type", "state")
+        packet.put("payload", payload)
+        
+        // Send immediately (High Priority)
+        networkExecutor.execute {
+            sendNetworkRequest(packet)
+        }
+    }
+
+    private fun flushLogs() {
+        if (logQueue.isEmpty()) return
+        
+        val batch = org.json.JSONArray()
+        // Take up to 50 logs
+        var count = 0
+        while(!logQueue.isEmpty() && count < 50) {
+            batch.put(logQueue.poll())
+            count++
+        }
+        
+        if (batch.length() == 0) return
+
+        val packet = JSONObject()
+        packet.put("deviceId", getDeviceId())
+        packet.put("type", "log")
+        packet.put("payload", batch)
+        
+        networkExecutor.execute {
+            sendNetworkRequest(packet)
+        }
+    }
+
+    private fun sendNetworkRequest(jsonBody: JSONObject) {
+        try {
+            val url = java.net.URL("https://game-auto-editor.vercel.app/api/log-stream")
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF_8")
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            
+            val os = java.io.OutputStreamWriter(conn.outputStream, "UTF-8")
+            os.write(jsonBody.toString())
+            os.flush()
+            os.close()
+            
+            val code = conn.responseCode
+            if (code != 200) {
+                // If remote fails, fallback to local log (don't retry endlessly to avoid loops)
+                Log.w(TAG, "Remote Log Failed: $code")
+            }
+            conn.disconnect()
+        } catch(e: Exception) {
+            Log.w(TAG, "Remote Log Network Error: ${e.message}")
+        }
     }
 }
