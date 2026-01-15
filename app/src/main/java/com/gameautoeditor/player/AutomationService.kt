@@ -287,12 +287,18 @@ class AutomationService : AccessibilityService() {
                         // Unified Engine Routing: ScriptEngine now handles BOTH Graph and Linear formats.
                         // We use ScriptEngine by default to avoid the forced-screenshot loop of the old SceneGraphEngine.
                         Log.i(TAG, "🚀 轉交給統一腳本引擎 (ScriptEngine)")
-                        scriptEngine.executeScript(scriptJson)
+                        // For backwards compatibility or debugging, we might use SceneGraphEngine if JSON structure dictates
+                        if (scriptJson.contains("\"nodes\"") && scriptJson.contains("\"edges\"")) {
+                             // Use FSM
+                             sceneGraphEngine.start(scriptJson, scriptIdOrUrl) // Pass Script ID!
+                        } else {
+                             scriptEngine.executeScript(scriptJson)
+                        }
                         
                         /* Legacy Routing (Disabled for stability)
                         if (scriptJson.contains("\"nodes\"") && scriptJson.contains("\"edges\"")) {
                             Log.i(TAG, "🔄 偵測到 Scene Graph 格式")
-                            sceneGraphEngine.start(scriptJson)
+                            sceneGraphEngine.start(scriptJson, scriptIdOrUrl)
                         } else {
                             Log.i(TAG, "➡️ 偵測到線性腳本格式")
                             scriptEngine.executeScript(scriptJson)

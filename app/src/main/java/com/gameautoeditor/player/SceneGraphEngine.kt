@@ -32,8 +32,12 @@ class SceneGraphEngine(private val service: AutomationService) {
     private var transitionStuckCount = 0
     private var lastTransitionAction: TransitionAction? = null
 
+    private var lastTransitionAction: TransitionAction? = null
+    private var currentScriptId: String? = null
+
     @Synchronized
-    fun start(jsonString: String) {
+    fun start(jsonString: String, scriptId: String? = null) {
+        this.currentScriptId = scriptId
         if (isRunning) {
             Log.w(TAG, "⚠️ 引擎已在運行中，忽略啟動請求")
             return
@@ -630,6 +634,7 @@ class SceneGraphEngine(private val service: AutomationService) {
         
         val packet = JSONObject()
         packet.put("deviceId", getDeviceId())
+        packet.put("scriptId", currentScriptId)
         packet.put("type", "state")
         packet.put("payload", payload)
         
@@ -654,6 +659,7 @@ class SceneGraphEngine(private val service: AutomationService) {
 
         val packet = JSONObject()
         packet.put("deviceId", getDeviceId())
+        packet.put("scriptId", currentScriptId)
         packet.put("type", "log")
         packet.put("payload", batch)
         
