@@ -32,7 +32,7 @@ class SceneGraphEngine(private val service: AutomationService) {
     private var transitionStuckCount = 0
     private var lastTransitionAction: TransitionAction? = null
 
-    private var lastTransitionAction: TransitionAction? = null
+
     private var currentScriptId: String? = null
 
     @Synchronized
