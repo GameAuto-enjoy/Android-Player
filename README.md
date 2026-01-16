@@ -24,8 +24,8 @@
 ### 建置步驟
 1.  Clone 此專案：
     ```bash
-    git clone https://github.com/LeiEdward/skybladesong.git
-    cd skybladesong/android-player
+    git clone https://github.com/GameAuto-enjoy/Android-Player.git
+    cd Android-Player
     ```
 2.  使用 Gradle 編譯：
     ```bash
