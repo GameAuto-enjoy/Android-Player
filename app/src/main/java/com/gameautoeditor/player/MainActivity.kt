@@ -130,9 +130,13 @@ class MainActivity : AppCompatActivity() {
     private fun performBootCheck(licenseKey: String) {
         thread {
             try {
+                val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+                Log.i(TAG, "Device ID: $deviceId")
+
                 val jsonBody = JSONObject().apply {
                     put("licenseKey", licenseKey)
                     put("currentVersionCode", BuildConfig.VERSION_CODE)
+                    put("deviceId", deviceId)
                 }
 
                 val conn = URL(API_BOOT_URL).openConnection() as HttpURLConnection
