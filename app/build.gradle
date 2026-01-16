@@ -14,6 +14,15 @@ android {
         versionCode 77
         versionName "1.7.30"
         
+        // Read API Secret from local.properties
+        def localProperties = new Properties()
+        def localFile = rootProject.file("local.properties")
+        if (localFile.exists()) {
+            localProperties.load(new FileInputStream(localFile))
+        }
+        def aiSecret = localProperties.getProperty("ai_api_secret", "oss_public_key")
+        buildConfigField "String", "AI_API_SECRET", "\"${aiSecret}\""
+
         ndk {
             // Only support ARM devices (Most Android phones & Emulators)
             // Removes x86/x86_64 Bloat (~50% size reduction)
