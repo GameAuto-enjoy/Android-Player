@@ -104,9 +104,67 @@ class ActionSystem(private val service: AutomationService) {
                     "RIGHT" -> endX += distance
                 }
                 
-                path.lineTo(endX, endY)
-                builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-                Log.i(TAG, "[動作: $label] 👆 滑動 $direction (${duration}ms)")
+                // --- Advanced AI Trajectory & Velocity Profile (Bio-mimicry) ---
+                // Divide the swipe into 3 segments to simulate Ease-In / Cruise / Ease-Out
+                // 1. Calculate Control Points with Randomness
+                val midX = (targetPoint.x + endX) / 2
+                val midY = (targetPoint.y + endY) / 2
+                val jitterMag = distance * (0.1f + Random.nextFloat() * 0.2f)
+                val controlX = midX + (Random.nextFloat() - 0.5f) * 2 * jitterMag
+                val controlY = midY + (Random.nextFloat() - 0.5f) * 2 * jitterMag
+
+                // To approximate the curve with segments, we calculate intermediate points on the Quad curve
+                // B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+                fun bezierPoint(t: Float, p0: Float, p1: Float, p2: Float): Float {
+                    return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+                }
+
+                // Split points: 20% and 80% (Ease-In end, Ease-Out start)
+                val t1 = 0.2f
+                val t2 = 0.8f
+                
+                val x1 = bezierPoint(t1, targetPoint.x, controlX, endX)
+                val y1 = bezierPoint(t1, targetPoint.y, controlY, endY)
+                val x2 = bezierPoint(t2, targetPoint.x, controlX, endX)
+                val y2 = bezierPoint(t2, targetPoint.y, controlY, endY)
+
+                // Time distribution: 
+                // Seg 1 (0-20% dist): 30% time (Slow acceleration)
+                // Seg 2 (20-80% dist): 40% time (Fast cruise)
+                // Seg 3 (80-100% dist): 30% time (Slow deceleration)
+                val dur1 = (duration * 0.3).toLong()
+                val dur2 = (duration * 0.4).toLong()
+                val dur3 = (duration * 0.3).toLong()
+                // Fix rounding errors to match total duration exactly? close enough.
+
+                // Build Strokes
+                // Segment 1
+                val path1 = Path()
+                path1.moveTo(targetPoint.x, targetPoint.y)
+                path1.lineTo(x1, y1) // Approximate curve with short lines for stability or Quad if possible? 
+                // Using lineTo for short segments is safer for preventing path rendering issues in Accessibility actions
+                // ideally we should substring the quad, but line approximation for shortness is fine.
+                // Let's use QuadTo with calculated intermediate controls? Too complex math. Line segment approximation is standard for velocity simulation.
+                
+                val stroke1 = GestureDescription.StrokeDescription(path1, 0, dur1)
+                
+                // Segment 2
+                val path2 = Path()
+                path2.moveTo(x1, y1)
+                path2.lineTo(x2, y2)
+                val stroke2 = GestureDescription.StrokeDescription(path2, dur1, dur2) // Start at dur1
+
+                // Segment 3
+                val path3 = Path()
+                path3.moveTo(x2, y2)
+                path3.lineTo(endX, endY)
+                val stroke3 = GestureDescription.StrokeDescription(path3, dur1 + dur2, dur3) // Start at dur1+dur2
+
+                builder.addStroke(stroke1)
+                builder.addStroke(stroke2)
+                builder.addStroke(stroke3)
+
+                Log.i(TAG, "[動作: $label] 👆 AI 變速滑動 ($direction) $duration ms (Ease-In/Out) Segments: $dur1-$dur2-$dur3")
             }
         }
         
