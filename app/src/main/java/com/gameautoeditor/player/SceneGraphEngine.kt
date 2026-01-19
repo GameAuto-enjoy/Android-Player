@@ -699,7 +699,15 @@ class SceneGraphEngine(private val service: AutomationService) {
             os.close()
             
             val code = conn.responseCode
-            if (code != 200) {
+            if (code == 401 || code == 403) {
+                 Log.e(TAG, "⛔ 伺服器拒絕訪問 ($code). 授權可能已過期或被封鎖. 強制停止腳本.")
+                 isRunning = false
+                 // Optional: Notify Service
+                 Handler(Looper.getMainLooper()).post {
+                     service.showToast("⛔ 授權無效，停止執行")
+                     service.updateStatus("Auth Failed")
+                 }
+            } else if (code != 200) {
                 // If remote fails, fallback to local log (don't retry endlessly to avoid loops)
                 Log.w(TAG, "Remote Log Failed: $code")
             }
