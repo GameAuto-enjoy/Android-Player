@@ -265,7 +265,7 @@ class AutomationService : AccessibilityService() {
                 val urlString = if (scriptIdOrUrl.startsWith("http")) {
                     scriptIdOrUrl
                 } else {
-                    "https://game-auto-editor.vercel.app/api/get-script?id=$scriptIdOrUrl"
+                    "https://game-auto-ai.vercel.app/api/get-script?id=$scriptIdOrUrl"
                 }
 
                 Log.d(TAG, "正在下載腳本: $urlString")

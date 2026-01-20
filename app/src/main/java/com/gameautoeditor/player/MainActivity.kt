@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
 
     private val TAG = "GameAuto"
     private val PREFS_NAME = "GameAutoEditor"
-    private val API_BOOT_URL = "https://game-auto-editor.vercel.app/api/device-boot"
+    private val API_BOOT_URL = "https://game-auto-ai.vercel.app/api/device-boot"
     // private val API_BOOT_URL = "http://10.0.2.2:5001/api/client-boot" // Local Dev
     
     private var lastUpdateFile: File? = null

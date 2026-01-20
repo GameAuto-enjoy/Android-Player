@@ -340,7 +340,7 @@ class PerceptionSystem(private val service: AutomationService, private val logge
 
         // 2. Base64
         val base64 = bitmapToBase64(region)
-        val urlStr = "https://game-auto-editor.vercel.app/api/ai-check" // Should use config or env
+        val urlStr = "https://game-auto-ai.vercel.app/api/ai-check" // Should use config or env
 
         var isMatch = false
         var reason: String? = null

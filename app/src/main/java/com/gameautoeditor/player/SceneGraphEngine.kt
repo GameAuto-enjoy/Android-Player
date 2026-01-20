@@ -685,7 +685,7 @@ class SceneGraphEngine(private val service: AutomationService) {
 
     private fun sendNetworkRequest(jsonBody: JSONObject) {
         try {
-            val url = java.net.URL("https://game-auto-editor.vercel.app/api/log-stream")
+            val url = java.net.URL("https://game-auto-ai.vercel.app/api/log-stream")
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.requestMethod = "POST"
             conn.doOutput = true
