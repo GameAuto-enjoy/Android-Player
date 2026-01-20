@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">GameAuto Player</string>
-    <string name="accessibility_service_description">自動化執行遊戲腳本，需要此權限以模擬觸控操作</string>
+    <string name="app_name">Touch Assistant Service</string>
+    <string name="accessibility_service_description">Provides touch interaction assistance for users with dexterity impairments. This service helps execute complex gestures efficiently.</string>
 </resources>
