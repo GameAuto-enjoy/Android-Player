@@ -69,7 +69,38 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Start Boot Process
+        checkInstallerEnvironment()
         bootstrap()
+    }
+
+    /**
+     * Phase 2: Installer Environment Check
+     * 檢查是否由官方 Installer 啟動，並建立數據連結。
+     * 目前僅做 Log 記錄，未來將強制檢查。
+     */
+    private fun checkInstallerEnvironment() {
+        Log.i(TAG, "🔍 Checking Installer Environment...")
+        
+        // 1. Check if Installer Package Exists (Soft Check)
+        val installerPkg = "com.gameauto.installer"
+        try {
+            val info = packageManager.getPackageInfo(installerPkg, 0)
+            Log.i(TAG, "✅ Installer found: ${info.versionName} (${info.versionCode})")
+            
+            // 2. Try to Connect to ContentProvider (Simulation)
+            val uri = Uri.parse("content://$installerPkg.provider/config")
+            // val cursor = contentResolver.query(uri, null, null, null, null)
+            // if (cursor != null) { ... }
+            
+        } catch (e: PackageManager.NameNotFoundException) {
+            Log.w(TAG, "⚠️ Installer NOT found! Running in standalone/orphan mode.")
+            // Future: Show Alert and finish()
+            // AlertDialog.Builder(this)
+            //    .setTitle("Security Error")
+            //    .setMessage("Installer not found. This app cannot run independently.")
+            //    .setPositiveButton("Exit") { _, _ -> finish() }
+            //    .show()
+        }
     }
 
     override fun onResume() {
