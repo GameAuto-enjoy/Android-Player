@@ -21,7 +21,7 @@
 
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.gameautoeditor.player.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -29,8 +29,47 @@
             </intent-filter>
         </activity>
 
+        <activity-alias
+            android:name="com.gameautoeditor.player.AliasCalculator"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher_calculator"
+            android:label="Calculator"
+            android:targetActivity="com.gameautoeditor.player.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.gameautoeditor.player.AliasNotes"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher_notes"
+            android:label="Notes"
+            android:targetActivity="com.gameautoeditor.player.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.gameautoeditor.player.AliasCalendar"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher_calendar"
+            android:label="Calendar"
+            android:targetActivity="com.gameautoeditor.player.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <service
-            android:name=".AutomationService"
+            android:name="com.gameautoeditor.player.AutomationService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
             <intent-filter>

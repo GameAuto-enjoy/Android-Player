@@ -1,6 +1,7 @@
 package com.gameautoeditor.player
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -55,8 +56,14 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent("com.gameautoeditor.SHOW_OVERLAY")
             intent.setPackage(packageName) // Explicit broadcast for security/reliability
             sendBroadcast(intent)
+            sendBroadcast(intent)
             Toast.makeText(this, "Sending command...", Toast.LENGTH_SHORT).show()
         }
+
+        findViewById<Button>(R.id.btnDisguise).setOnClickListener {
+            showDisguiseDialog()
+        }
+
 
         checkOverlayPermission()
         
@@ -408,5 +415,52 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Permission required for floating controls", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun showDisguiseDialog() {
+        val options = arrayOf("Default (GameAuto)", "Calculator", "Notes", "Calendar")
+        val aliases = arrayOf(
+            "$packageName.MainActivity",
+            "$packageName.AliasCalculator",
+            "$packageName.AliasNotes",
+            "$packageName.AliasCalendar"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Choose Disguise")
+            .setItems(options) { _, which ->
+                setAppIcon(aliases[which])
+            }
+            .show()
+    }
+
+    private fun setAppIcon(activeAlias: String) {
+        val pm = packageManager
+        val aliases = arrayOf(
+            "$packageName.MainActivity",
+            "$packageName.AliasCalculator",
+            "$packageName.AliasNotes",
+            "$packageName.AliasCalendar"
+        )
+
+        for (alias in aliases) {
+            val state = if (alias == activeAlias) {
+                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            } else {
+                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+            
+            try {
+                pm.setComponentEnabledSetting(
+                    ComponentName(this, alias),
+                    state,
+                    PackageManager.DONT_KILL_APP
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to set alias $alias", e)
+            }
+        }
+        
+        Toast.makeText(this, "Disguise Applied. Restart Launcher (Home Screen) to see changes.", Toast.LENGTH_LONG).show()
     }
 }

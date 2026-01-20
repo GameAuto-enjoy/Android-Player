@@ -195,6 +195,52 @@
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
+
+            <!-- Stealth Mode Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="#FFF3E0"
+                android:layout_marginBottom="16dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Stealth Ops"
+                        android:textSize="12sp"
+                        android:textAllCaps="true"
+                        android:textColor="#FF9800"
+                        android:letterSpacing="0.1"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Disguise Identity"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#5D4037"
+                        android:layout_marginTop="4dp"/>
+
+                    <Button
+                        android:id="@+id/btnDisguise"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Change App Icon"
+                        android:backgroundTint="#FFB74D"
+                        android:layout_marginTop="12dp"
+                        android:textColor="#FFFFFF"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
         </LinearLayout>
     </ScrollView>
 
