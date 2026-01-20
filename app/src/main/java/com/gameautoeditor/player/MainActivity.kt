@@ -87,19 +87,31 @@ class MainActivity : AppCompatActivity() {
             val info = packageManager.getPackageInfo(installerPkg, 0)
             Log.i(TAG, "✅ Installer found: ${info.versionName} (${info.versionCode})")
             
-            // 2. Try to Connect to ContentProvider (Simulation)
-            val uri = Uri.parse("content://$installerPkg.provider/config")
-            // val cursor = contentResolver.query(uri, null, null, null, null)
-            // if (cursor != null) { ... }
+            // 2. Connect to ContentProvider (IPC Tether)
+            val uri = Uri.parse("content://$installerPkg.provider")
+            try {
+                val cursor = contentResolver.query(uri, null, null, null, null)
+                cursor?.use {
+                    if (it.moveToFirst()) {
+                        val keyIndex = it.getColumnIndex("license_key")
+                        if (keyIndex != -1) {
+                            val remoteKey = it.getString(keyIndex)
+                            if (!remoteKey.isNullOrEmpty()) {
+                                Log.i(TAG, "🔗 Tether Successful! License Key retrieved from Installer.")
+                                // Save to local prefs
+                                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                                    .edit().putString("license_key", remoteKey).apply()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Failed to query Installer Provider: ${e.message}")
+            }
             
         } catch (e: PackageManager.NameNotFoundException) {
             Log.w(TAG, "⚠️ Installer NOT found! Running in standalone/orphan mode.")
             // Future: Show Alert and finish()
-            // AlertDialog.Builder(this)
-            //    .setTitle("Security Error")
-            //    .setMessage("Installer not found. This app cannot run independently.")
-            //    .setPositiveButton("Exit") { _, _ -> finish() }
-            //    .show()
         }
     }
 
