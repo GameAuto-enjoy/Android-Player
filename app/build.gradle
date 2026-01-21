@@ -64,6 +64,11 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    
+    aaptOptions {
+        noCompress "resources.arsc"
+    }
+
 }
 
 dependencies {
