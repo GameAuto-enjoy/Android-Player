@@ -1,0 +1,114 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.gameautoeditor.player'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.gameauto.target"
+        minSdk 24
+        targetSdk 34
+        versionCode 150
+        versionName "1.9.74"
+        
+        // Read API Secret from local.properties, Env Var, or Project Property
+        def localProperties = new Properties()
+        def localFile = rootProject.file("local.properties")
+        if (localFile.exists()) {
+            localProperties.load(new FileInputStream(localFile))
+        }
+        
+        def aiSecret = localProperties.getProperty("ai_api_secret")
+        
+        // Fallback 1: Environment Variable (CI Friendly)
+        if (aiSecret == null || aiSecret.isEmpty()) {
+            aiSecret = System.getenv("AI_API_SECRET")
+        }
+        
+        // Fallback 2: Project Property (-Pai_api_secret=...)
+        if (aiSecret == null || aiSecret.isEmpty()) {
+            aiSecret = project.findProperty("ai_api_secret")
+        }
+
+        if (aiSecret == null || aiSecret.isEmpty()) {
+            throw new org.gradle.api.GradleException("CRITICAL: 'ai_api_secret' is missing. Checked local.properties, ENV['AI_API_SECRET'], and -Pai_api_secret.")
+        }
+        buildConfigField "String", "AI_API_SECRET", "\"${aiSecret}\""
+
+        def aiApiUrl = localProperties.getProperty("ai_api_url") ?: System.getenv("AI_API_URL") ?: project.findProperty("ai_api_url") ?: "https://game-auto-ai.vercel.app"
+        buildConfigField "String", "AI_API_URL", "\"${aiApiUrl}\""
+
+        ndk {
+            // Only support ARM devices (Most Android phones & Emulators)
+            // Removes x86/x86_64 Bloat (~50% size reduction)
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+        
+        vectorDrawables.useSupportLibrary = true
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+    
+    aaptOptions {
+        // Explicitly force AndroidManifest.xml and resources.arsc to be UNCOMPRESSED (Store Method)
+        // This is crucial for the Installer's "Stealth Mode" patching mechanism.
+        noCompress 'resources.arsc', 'AndroidManifest.xml'
+    }
+
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // OpenCV for Android
+    implementation 'com.quickbirdstudios:opencv:4.5.3.0'
+    
+    // ML Kit Text Recognition (Chinese) - Bundled (Instant use, larger APK)
+    implementation 'com.google.mlkit:text-recognition-chinese:16.0.0'
+    
+    // JSON Parsing
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'androidx.cardview:cardview:1.0.0'
+
+    // Networking & Async
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+}

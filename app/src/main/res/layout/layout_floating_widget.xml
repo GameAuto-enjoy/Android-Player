@@ -1,0 +1,153 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <!-- 展開後的選單容器 -->
+    <LinearLayout
+        android:id="@+id/expanded_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:padding="8dp"
+        android:visibility="gone"
+        android:gravity="center_vertical">
+
+        <!-- Close/Collapse Button -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:srcCompat="@drawable/ic_control_close"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
+            android:contentDescription="Close Menu"/>
+
+        <!-- Play/Pause Button -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/btnPlayPause"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:srcCompat="@drawable/ic_control_play"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="4dp"
+            android:contentDescription="Play/Pause"
+            android:layout_marginStart="8dp"/>
+
+        <!-- Stop Button -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/btnStop"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:srcCompat="@drawable/ic_control_stop"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="4dp"
+            android:contentDescription="Stop"
+            android:layout_marginStart="8dp"/>
+            
+        <!-- Record Button -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/btnRecord"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_camera"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:contentDescription="Record"
+            android:layout_marginStart="8dp"
+            app:tint="#FF3B30"/>
+
+        <!-- Settings/Schedule Button -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:srcCompat="@drawable/ic_control_settings"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:contentDescription="Settings"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <!-- 錄製模式專屬容器 -->
+    <LinearLayout
+        android:id="@+id/recording_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:padding="8dp"
+        android:visibility="gone"
+        android:gravity="center_vertical">
+        
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/presence_video_busy"
+            android:layout_marginEnd="8dp"/>
+            
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="自動錄製中..."
+            android:textColor="#333333"
+            android:textSize="12sp"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/btnStopRecording"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="結束錄製"
+            android:textSize="12sp"
+            android:backgroundTint="#FF3B30"
+            android:textColor="#FFFFFF"/>
+    </LinearLayout>
+
+    <!-- 收合狀態的 LOGO (懸浮球) -->
+    <!-- Collapsed Container (Icon + Status HUD) -->
+    <LinearLayout
+        android:id="@+id/collapsed_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/floating_icon"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            app:srcCompat="@drawable/ic_floating_logo"
+            android:background="@drawable/bg_floating_circle"
+            android:contentDescription="Floating Icon"
+            android:scaleType="fitCenter"
+            android:padding="2dp"
+            android:elevation="4dp"/>
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#B3000000"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginStart="4dp"
+            android:visibility="gone"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:maxWidth="200dp"
+            android:text="Ready"
+            android:elevation="4dp"/>
+    </LinearLayout>
+
+</FrameLayout>
