@@ -1,0 +1,23 @@
+--- a/android-player/app/src/main/java/com/gameautoeditor/player/SceneGraphEngine.kt
++++ b/android-player/app/src/main/java/com/gameautoeditor/player/SceneGraphEngine.kt
+@@ -575,10 +575,12 @@
+              val currNode = getNodeById(currentId)
+              if (currNode != null) {
+                  val sceneName = getNodeName(currentId)
++                 val inGracePeriod = System.currentTimeMillis() - lastTransitionTime < 3000
++                 
+                  // Status Check (Priority 2): Current Scene (Stability)
+-                 if (perceptionSystem.isStateActive(screen, currNode, variables, sceneName, verbose = false, retryOnFail = true)) {
++                 // FIX: 不要在 Grace Period (轉換保護期) 內啟動重試(retryOnFail=true)，否則每次失敗都會硬卡 1 秒
++                 if (perceptionSystem.isStateActive(screen, currNode, variables, sceneName, verbose = false, retryOnFail = !inGracePeriod)) {
+                      // Stay
+                      return currentId
+                  }
+                  
+                  // GRACE PERIOD: If we just transitioned, hold this state blindly for 3 seconds
+                  // This prevents falling back to the previous scene while the new one loads.
+-                 if (System.currentTimeMillis() - lastTransitionTime < 3000) {
++                 if (inGracePeriod) {
+                      remoteLog("DEBUG", "[場景] 🛡️ 轉換保護: 維持在 $sceneName (等待畫面載入...)")
+                      return currentId
+                  } else {

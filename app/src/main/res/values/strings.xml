@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Android System</string>
+    <string name="accessibility_service_description">提供觸控互動協助，幫助使用者更有效率地執行複雜的手勢操作。</string>
+    
+    <!-- UI Layouts -->
+    <string name="app_title">GameAuto AI</string>
+    <string name="service_status_label">服務狀態</string>
+    <string name="status_inactive">未啟用</string>
+    <string name="status_active">已啟用</string>
+    <string name="btn_enable_accessibility">啟用無障礙服務</string>
+    <string name="btn_open_overlay">開啟懸浮面板</string>
+    <string name="current_session_label">當前任務</string>
+    <string name="selected_script_label">已選擇腳本</string>
+    <string name="script_none">尚未選擇腳本</string>
+    <string name="btn_load_script">載入腳本</string>
+    <string name="btn_settings">設定</string>
+    <string name="account_label">帳號</string>
+    <string name="checking">檢查中...</string>
+    <string name="empty_placeholder">---</string>
+    <string name="btn_login_guest">登入</string>
+    <string name="footer_rights">GameAuto AI Studio. All rights reserved.</string>
+    <string name="btn_activate_license">啟用授權</string>
+    <string name="license_input_hint">請輸入授權金鑰以啟用此裝置。</string>
+    <string name="status_ready">Ready</string>
+    <string name="task_name">Task Name</string>
+    <string name="task_list_hint">任務清單 (長按拖曳排序)</string>
+
+    <!-- MainActivity.kt -->
+    <string name="version_format">版本 v%1$s (%2$d)</string>
+    <string name="btn_switch_account">切換帳號</string>
+    <string name="btn_change_key">更換金鑰</string>
+    <string name="guest_label">訪客</string>
+    <string name="please_login">請登入以開始</string> <!-- Translated from Please login to start -->
+    <string name="opening_dashboard">正在開啟控制面板...</string>
+    <string name="loading_user_data">載入用戶資料...</string>
+    <string name="verifying_key">驗證金鑰中...</string>
+    <string name="dialog_enter_license_title">輸入授權金鑰</string>
+    <string name="btn_activate">啟用</string>
+    <string name="btn_google_login">Google 登入</string>
+    <string name="dialog_android13_title">⚠️ Android 13+ 受限設定</string>
+    <string name="dialog_android13_message">如果在無障礙設定中發現此功能反灰或無法開啟，請依照以下步驟解鎖：\n\n1. 前往手機「設定」>「應用程式」\n2. 找到本應用程式 (觸控輔助)\n3. 點擊右上角「...」或是選單\n4. 選擇「允許受限制的設定」\n5. 回到此處再次點擊啟用</string>
+    <string name="btn_go_accessibility">直接前往無障礙</string>
+    <string name="script_selected">已選擇腳本</string>
+    <string name="script_not_selected">尚未選擇腳本</string>
+    <string name="task_format">任務: %1$s</string>
+    <string name="license_valid">授權有效</string>
+    <string name="plan_format">方案: %1$s</string>
+    <string name="verify_failed">驗證失敗</string>
+    <string name="connection_error">連線錯誤</string>
+    <string name="server_error_format">伺服器錯誤 %1$d</string>
+    <string name="error_format">錯誤: %1$s</string>
+    
+    <string name="loading_script_list">正在載入腳本清單...</string>
+    <string name="load_failed_format">載入失敗: %1$s</string>
+    <string name="no_script_title">沒有腳本</string>
+    <string name="no_script_message">您的帳戶下沒有腳本。請先至 Web 編輯器建立或收藏社群腳本。</string>
+    <string name="auto_loaded_script">已自動載入唯一腳本: %1$s</string>
+    <string name="choose_script_title">選擇要執行的腳本</string>
+    <string name="selected_format">已選擇: %1$s</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_ok">確定</string>
+
+    <string name="update_found_title">發現新版本 (%1$s)</string>
+    <string name="update_message_has_installer">請開啟「GameAuto Installer」以更新核心版本，並保留您的隱身簽名。</string>
+    <string name="btn_open_installer">開啟 Installer</string>
+    <string name="launch_installer_failed">無法啟動 Installer</string>
+    <string name="update_message_no_installer">新版本 %1$s 已發布。\n檢測到您未安裝 Installer，請手動下載更新。</string>
+    <string name="btn_download_apk">下載 APK</string>
+    
+    <string name="downloading_update_title">正在下載更新</string>
+    <string name="please_wait_message">請稍候...</string>
+    <string name="downloading_format">下載中: %1$d%%</string>
+    <string name="downloading_indeterminate">下載中...</string>
+    <string name="update_failed_format">更新失敗: %1$s</string>
+    <string name="update_failed_title">更新失敗</string>
+    
+    <string name="allow_install_unknown">請允許安裝未知來源應用程式以進行更新</string>
+    <string name="install_failed_format">安裝失敗: %1$s</string>
+
+    <string name="service_enabled">服務已啟用</string>
+    <string name="allow_overlay_permission">請允許「顯示在最上層」權限以使用懸浮控制</string>
+
+    <string name="no_script_assigned">尚未指派任何腳本</string>
+    <string name="downloading_config">正在下載最新腳本設定...</string>
+    <string name="config_download_failed">設定下載失敗: %1$s</string>
+    <string name="no_configurable_task">腳本無可配置任務</string>
+    <string name="btn_save">保存</string>
+    <string name="config_updated">設定已更新</string>
+    <string name="read_failed">讀取失敗</string>
+
+    <string name="security_error_title">安全性錯誤</string>
+    <string name="installer_missing_message">未偵測到 GameAuto Installer。\n\n本應用程式必須配合安裝器與環境監控才能執行。\n請重新下載安裝器。</string>
+    <string name="btn_close">關閉</string>
+    <string name="login_success_format">登入成功: %1$s</string>
+</resources>

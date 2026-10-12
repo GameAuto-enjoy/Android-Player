@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0F172A"
+    android:fitsSystemWindows="true">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="24dp"
+            android:orientation="vertical">
+
+            <!-- HEADER -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="32dp">
+
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/app_logo"
+                    android:layout_gravity="center"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="16dp">
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_title"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="#F8FAFC"
+                        android:fontFamily="sans-serif-medium"/>
+                    
+                    <TextView
+                        android:id="@+id/textVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v1.0.0"
+                        android:textSize="12sp"
+                        android:textColor="#64748B"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- SERVICE STATUS CARD -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="#1E293B"
+                app:cardElevation="0dp"
+                android:layout_marginBottom="24dp">
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/service_status_label"
+                            android:textAllCaps="true"
+                            android:textSize="12sp"
+                            android:letterSpacing="0.1"
+                            android:textStyle="bold"
+                            android:textColor="#64748B"/>
+
+                        <TextView
+                            android:id="@+id/textServiceStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/status_inactive"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:background="@drawable/ic_control_settings"
+                            android:backgroundTint="#334155" 
+                            android:textColor="#F44336"/>
+
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnActivate"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="@string/btn_enable_accessibility"
+                        android:textAllCaps="false"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"
+                        android:backgroundTint="#6366F1"
+                        app:cornerRadius="12dp"/>
+                    
+                    <Button
+                        android:id="@+id/btnShowControls"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="@string/btn_open_overlay"
+                        android:visibility="gone"
+                        android:textAllCaps="false"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#1E293B"
+                        android:backgroundTint="#10B981"
+                        app:cornerRadius="12dp"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+
+            <!-- CURRENT TASK CARD -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/current_session_label"
+                android:textColor="#64748B"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"/>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="#1E293B"
+                app:cardElevation="0dp"
+                android:layout_marginBottom="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+                    
+                    <!-- Script Name -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/selected_script_label"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp"/>
+                    
+                    <TextView
+                        android:id="@+id/textCurrentScript"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/script_none"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#F8FAFC"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="16dp"/>
+
+                    <!-- Progress Bar -->
+                     <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:progressTint="#6366F1"
+                        android:layout_marginBottom="16dp"
+                        android:visibility="invisible"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        
+                        <Button
+                            android:id="@+id/btnSelectScript"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/btn_load_script"
+                            android:backgroundTint="#334155"
+                            android:textColor="#F8FAFC"
+                            app:cornerRadius="8dp"
+                            app:strokeColor="#475569"
+                            app:strokeWidth="1dp"
+                            style="?android:attr/borderlessButtonStyle"/>
+                            
+                        <Button
+                            android:id="@+id/btnTaskConfig"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/btn_settings"
+                            android:layout_marginStart="8dp"
+                            android:backgroundTint="#334155"
+                            android:textColor="#F8FAFC"
+                            app:cornerRadius="8dp"
+                            app:strokeColor="#475569"
+                            app:strokeWidth="1dp"
+                            style="?android:attr/borderlessButtonStyle"/>
+                            
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ACCOUNT CARD -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/account_label"
+                android:textColor="#64748B"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"/>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="#1E293B"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+                    
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
+                        
+                        <LinearLayout
+                             android:layout_width="0dp"
+                             android:layout_height="wrap_content"
+                             android:layout_weight="1"
+                             android:orientation="vertical">
+                             
+                            <TextView
+                                android:id="@+id/textLicenseStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/checking"
+                                android:textColor="#F8FAFC"
+                                android:textStyle="bold"
+                                android:textSize="16sp"/>
+                            
+                            <TextView
+                                android:id="@+id/textExpiry"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/empty_placeholder"
+                                android:textColor="#64748B"
+                                android:textSize="12sp"/>
+                        </LinearLayout>
+                        
+                        <Button
+                            android:id="@+id/btnChangeLicense"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="@string/btn_login_guest"
+                            android:textSize="12sp"
+                            android:paddingHorizontal="16dp"
+                            android:backgroundTint="#0F172A"
+                            android:textColor="#94A3B8"
+                            app:cornerRadius="18dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"/>
+                        
+                    </LinearLayout>
+                    
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/footer_rights"
+                        android:gravity="center"
+                        android:textColor="#334155"
+                        android:textSize="10sp"
+                        android:layout_marginTop="8dp"/>
+                        
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
