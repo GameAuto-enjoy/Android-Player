@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0B1120"
+    android:fitsSystemWindows="true">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="20dp"
+            android:orientation="vertical">
+
+            <!-- HEADER -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="20dp">
+
+                <ImageView
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:src="@drawable/app_logo"
+                    android:layout_gravity="center"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="14dp">
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_title"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="#F8FAFC"
+                        android:fontFamily="sans-serif-medium"/>
+                    
+                    <TextView
+                        android:id="@+id/textVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v1.0.0"
+                        android:textSize="12sp"
+                        android:textColor="#64748B"/>
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnChangeLicense"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="@string/btn_login_guest"
+                    android:textSize="12sp"
+                    android:paddingHorizontal="14dp"
+                    android:backgroundTint="#1E293B"
+                    android:textColor="#E2E8F0"
+                    app:cornerRadius="18dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+            </LinearLayout>
+
+            <!-- STEP 1: PERMISSIONS WIZARD CARD -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="#1E293B"
+                app:cardElevation="0dp"
+                android:layout_marginBottom="16dp">
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="STEP 1 · 開啟無障礙與懸浮權限"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:textColor="#818CF8"/>
+
+                        <TextView
+                            android:id="@+id/textServiceStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/status_inactive"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="#F44336"/>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="開啟後，助手才能在遊戲畫面上自動辨識按鈕與協助點擊。"
+                        android:textSize="12sp"
+                        android:textColor="#94A3B8"
+                        android:layout_marginBottom="12dp"/>
+
+                    <Button
+                        android:id="@+id/btnActivate"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:text="@string/btn_enable_accessibility"
+                        android:textAllCaps="false"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"
+                        android:backgroundTint="#6366F1"
+                        app:cornerRadius="12dp"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- STEP 2: SELECT SCRIPT & QUICK PARAMETERS CARD -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="#1E293B"
+                app:cardElevation="0dp"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="STEP 2 · 選擇腳本與執行參數"
+                            android:textColor="#818CF8"
+                            android:textSize="13sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/textLicenseStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/checking"
+                            android:textColor="#10B981"
+                            android:textStyle="bold"
+                            android:textSize="12sp"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/textExpiry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/empty_placeholder"
+                        android:textColor="#64748B"
+                        android:textSize="11sp"
+                        android:layout_marginBottom="10dp"/>
+                    
+                    <TextView
+                        android:id="@+id/textCurrentScript"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/script_none"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:textColor="#F8FAFC"
+                        android:layout_marginBottom="8dp"/>
+
+                     <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:progressTint="#6366F1"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="invisible"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="14dp">
+                        
+                        <Button
+                            android:id="@+id/btnSelectScript"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_weight="1"
+                            android:text="📂 切換雲端腳本"
+                            android:textAllCaps="false"
+                            android:backgroundTint="#334155"
+                            android:textColor="#F8FAFC"
+                            app:cornerRadius="10dp"/>
+                            
+                        <Button
+                            android:id="@+id/btnTaskConfig"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_weight="1"
+                            android:text="⚙️ 任務子開關"
+                            android:textAllCaps="false"
+                            android:layout_marginStart="8dp"
+                            android:backgroundTint="#334155"
+                            android:textColor="#F8FAFC"
+                            app:cornerRadius="10dp"/>
+                    </LinearLayout>
+
+                    <!-- Quick Adjustable Parameter Row: Target Loops -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="#0F172A"
+                        android:padding="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🔄 目標循環次數 (自動覆寫)"
+                                android:textColor="#E2E8F0"
+                                android:textSize="13sp"
+                                android:textStyle="bold"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="執行達指定回數時自動停止"
+                                android:textColor="#64748B"
+                                android:textSize="11sp"/>
+                        </LinearLayout>
+
+                        <Button
+                            android:id="@+id/btnLoopMinus"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
+                            android:text="-"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:padding="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:backgroundTint="#334155"
+                            android:textColor="#FFFFFF"/>
+
+                        <TextView
+                            android:id="@+id/textLoopTargetValue"
+                            android:layout_width="56dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:text="無限"
+                            android:textColor="#34D399"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <Button
+                            android:id="@+id/btnLoopPlus"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
+                            android:text="+"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:padding="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:backgroundTint="#334155"
+                            android:textColor="#FFFFFF"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- STEP 3: ONE-CLICK LAUNCH FLOATING HUD CARD -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="#1E293B"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                    
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="STEP 3 · 掛載懸浮球並進入遊戲"
+                        android:textColor="#34D399"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="6dp"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="點擊下方按鈕喚出懸浮控制球，切換至遊戲畫面即可一鍵開始自動執行或邊玩邊錄製。"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        android:layout_marginBottom="14dp"/>
+
+                    <Button
+                        android:id="@+id/btnShowControls"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="🚀 喚出懸浮控制球 (開始掛機 / 錄製)"
+                        android:textAllCaps="false"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#10B981"
+                        app:cornerRadius="14dp"/>
+                        
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/footer_rights"
+                        android:gravity="center"
+                        android:textColor="#475569"
+                        android:textSize="10sp"
+                        android:layout_marginTop="14dp"/>
+                        
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

@@ -1,0 +1,286 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <!-- 展開後的選單與懸浮控制抽屜容器 -->
+    <LinearLayout
+        android:id="@+id/expanded_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <!-- 主工具列 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Close/Collapse Button -->
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnClose"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                app:srcCompat="@drawable/ic_control_close"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="8dp"
+                android:contentDescription="Close Menu"/>
+
+            <!-- Play/Pause Button -->
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnPlayPause"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                app:srcCompat="@drawable/ic_control_play"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="4dp"
+                android:contentDescription="Play/Pause"
+                android:layout_marginStart="6dp"/>
+
+            <!-- Stop Button -->
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnStop"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                app:srcCompat="@drawable/ic_control_stop"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="4dp"
+                android:contentDescription="Stop"
+                android:layout_marginStart="6dp"/>
+                
+            <!-- Record Button -->
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnRecord"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_menu_camera"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="6dp"
+                android:contentDescription="Record"
+                android:layout_marginStart="6dp"
+                app:tint="#FF3B30"/>
+
+            <!-- Toggle Control Drawer Button -->
+            <Button
+                android:id="@+id/btnToggleDrawer"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:text="🎛️ 調參"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="8dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:layout_marginStart="6dp"
+                android:backgroundTint="#4F46E5"
+                android:textColor="#FFFFFF"/>
+
+            <!-- Settings/Schedule Button -->
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                app:srcCompat="@drawable/ic_control_settings"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="6dp"
+                android:contentDescription="Settings"
+                android:layout_marginStart="6dp"/>
+        </LinearLayout>
+
+        <!-- 懸浮控制抽屜 (In-Game Quick Parameter & Screen Push Drawer) -->
+        <LinearLayout
+            android:id="@+id/drawer_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#E60F172A"
+            android:padding="10dp"
+            android:layout_marginTop="6dp"
+            android:visibility="gone">
+
+            <!-- 遊戲內快速循環次數微調 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="🔄 目標循環回數"
+                    android:textColor="#F8FAFC"
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
+
+                <Button
+                    android:id="@+id/btnHudLoopMinus"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:text="-"
+                    android:textSize="14sp"
+                    android:padding="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:backgroundTint="#334155"
+                    android:textColor="#FFFFFF"/>
+
+                <TextView
+                    android:id="@+id/tvHudLoopValue"
+                    android:layout_width="48dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="無限"
+                    android:textColor="#34D399"
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
+
+                <Button
+                    android:id="@+id/btnHudLoopPlus"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:text="+"
+                    android:textSize="14sp"
+                    android:padding="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:backgroundTint="#334155"
+                    android:textColor="#FFFFFF"/>
+            </LinearLayout>
+
+            <!-- 一鍵傳送當前遊戲畫面至網頁編輯器 -->
+            <Button
+                android:id="@+id/btnPushScreenToWeb"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:text="📸 傳送畫面至網頁編輯器"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:backgroundTint="#059669"
+                android:textColor="#FFFFFF"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 錄製模式專屬容器 (支援「邊玩邊標記」點擊 / 條件 / 循環) -->
+    <LinearLayout
+        android:id="@+id/recording_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:padding="6dp"
+        android:visibility="gone"
+        android:gravity="center_vertical">
+        
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@android:drawable/presence_video_busy"
+            android:layout_marginEnd="6dp"/>
+            
+        <Button
+            android:id="@+id/btnRecModeClick"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="👆 點擊"
+            android:textSize="11sp"
+            android:paddingHorizontal="8dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="4dp"
+            android:backgroundTint="#4F46E5"
+            android:textColor="#FFFFFF"/>
+
+        <Button
+            android:id="@+id/btnRecModeCondition"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="👁️ 條件"
+            android:textSize="11sp"
+            android:paddingHorizontal="8dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="4dp"
+            android:backgroundTint="#334155"
+            android:textColor="#FFFFFF"/>
+
+        <Button
+            android:id="@+id/btnRecModeLoop"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="🔄 循環"
+            android:textSize="11sp"
+            android:paddingHorizontal="8dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="6dp"
+            android:backgroundTint="#334155"
+            android:textColor="#FFFFFF"/>
+
+        <Button
+            android:id="@+id/btnStopRecording"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="結束儲存"
+            android:textSize="11sp"
+            android:paddingHorizontal="10dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:backgroundTint="#FF3B30"
+            android:textColor="#FFFFFF"/>
+    </LinearLayout>
+
+    <!-- 收合狀態的 LOGO (懸浮球) -->
+    <!-- Collapsed Container (Icon + Status HUD) -->
+    <LinearLayout
+        android:id="@+id/collapsed_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/floating_icon"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            app:srcCompat="@drawable/ic_floating_logo"
+            android:background="@drawable/bg_floating_circle"
+            android:contentDescription="Floating Icon"
+            android:scaleType="fitCenter"
+            android:padding="2dp"
+            android:elevation="4dp"/>
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#B3000000"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginStart="4dp"
+            android:visibility="gone"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:maxWidth="200dp"
+            android:text="Ready"
+            android:elevation="4dp"/>
+    </LinearLayout>
+
+</FrameLayout>
