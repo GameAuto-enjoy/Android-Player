@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Android System</string>
+    <string name="accessibility_service_description">Provides touch interaction assistance to help users execute complex gestures more efficiently.</string>
+    
+    <!-- UI Layouts -->
+    <string name="app_title">GameAuto AI</string>
+    <string name="service_status_label">SERVICE STATUS</string>
+    <string name="status_inactive">INACTIVE</string>
+    <string name="status_active">ACTIVE</string>
+    <string name="btn_enable_accessibility">Enable Accessibility</string>
+    <string name="btn_open_overlay">Open Overlay</string>
+    <string name="current_session_label">CURRENT SESSION</string>
+    <string name="selected_script_label">Selected Script</string>
+    <string name="script_none">None</string>
+    <string name="btn_load_script">Load Script</string>
+    <string name="btn_settings">Settings</string>
+    <string name="account_label">ACCOUNT</string>
+    <string name="checking">Checking...</string>
+    <string name="empty_placeholder">---</string>
+    <string name="btn_login_guest">Login</string>
+    <string name="footer_rights">GameAuto AI Studio. All rights reserved.</string>
+    <string name="btn_activate_license">Activate</string>
+    <string name="license_input_hint">Enter license key to activate device.</string>
+    <string name="status_ready">Ready</string>
+    <string name="task_name">Task Name</string>
+    <string name="task_list_hint">Task List (Long press to sort)</string>
+
+    <!-- MainActivity.kt -->
+    <string name="version_format">Version v%1$s (%2$d)</string>
+    <string name="btn_switch_account">Switch Account</string>
+    <string name="btn_change_key">Change Key</string>
+    <string name="guest_label">Guest</string>
+    <string name="please_login">Please login to start</string>
+    <string name="opening_dashboard">Opening Dashboard...</string>
+    <string name="loading_user_data">Loading user data...</string>
+    <string name="verifying_key">Verifying key...</string>
+    <string name="dialog_enter_license_title">Enter License Key</string>
+    <string name="btn_activate">Activate</string>
+    <string name="btn_google_login">Google Sign-In</string>
+    <string name="dialog_android13_title">⚠️ Android 13+ Restricted Settings</string>
+    <string name="dialog_android13_message">If this setting is greyed out in Accessibility settings, please unlock it:\n\n1. Go to phone \"Settings\" > \"Apps\"\n2. Find this application\n3. Tap the \"...\" menu in the top right\n4. Select \"Allow restricted settings\"\n5. Return here to enable again.</string>
+    <string name="btn_go_accessibility">Go to Accessibility</string>
+    <string name="script_selected">Script selected</string>
+    <string name="script_not_selected">No script selected</string>
+    <string name="task_format">Task: %1$s</string>
+    <string name="license_valid">License Valid</string>
+    <string name="plan_format">Plan: %1$s</string>
+    <string name="verify_failed">Verification Failed</string>
+    <string name="connection_error">Connection Error</string>
+    <string name="server_error_format">Server Error %1$d</string>
+    <string name="error_format">Error: %1$s</string>
+    
+    <string name="loading_script_list">Loading scripts...</string>
+    <string name="load_failed_format">Load failed: %1$s</string>
+    <string name="no_script_title">No Scripts</string>
+    <string name="no_script_message">You have no scripts. Please create or save a community script from the Web Editor.</string>
+    <string name="auto_loaded_script">Auto-loaded sole script: %1$s</string>
+    <string name="choose_script_title">Select Script to Run</string>
+    <string name="selected_format">Selected: %1$s</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_ok">OK</string>
+
+    <string name="update_found_title">Update Found (%1$s)</string>
+    <string name="update_message_has_installer">Please open \"GameAuto Installer\" to update the core, maintaining your stealth signature.</string>
+    <string name="btn_open_installer">Open Installer</string>
+    <string name="launch_installer_failed">Failed to launch Installer</string>
+    <string name="update_message_no_installer">New version %1$s available.\nInstaller not found. Please download manually.</string>
+    <string name="btn_download_apk">Download APK</string>
+    
+    <string name="downloading_update_title">Downloading Update</string>
+    <string name="please_wait_message">Please wait...</string>
+    <string name="downloading_format">Downloading: %1$d%%</string>
+    <string name="downloading_indeterminate">Downloading...</string>
+    <string name="update_failed_format">Update failed: %1$s</string>
+    <string name="update_failed_title">Update Failed</string>
+    
+    <string name="allow_install_unknown">Please allow installation from unknown sources to update</string>
+    <string name="install_failed_format">Install failed: %1$s</string>
+
+    <string name="service_enabled">Service Enabled</string>
+    <string name="allow_overlay_permission">Please allow "Display over other apps" permission</string>
+
+    <string name="no_script_assigned">No script assigned</string>
+    <string name="downloading_config">Downloading script config...</string>
+    <string name="config_download_failed">Config download failed: %1$s</string>
+    <string name="no_configurable_task">No configurable tasks</string>
+    <string name="btn_save">Save</string>
+    <string name="config_updated">Config updated</string>
+    <string name="read_failed">Read failed</string>
+
+    <string name="security_error_title">Security Error</string>
+    <string name="installer_missing_message">GameAuto Installer not found.\n\nThis core requires the Installer environment.\nPlease re-download the Installer.</string>
+    <string name="btn_close">Close</string>
+    <string name="login_success_format">Login success: %1$s</string>
+</resources>
